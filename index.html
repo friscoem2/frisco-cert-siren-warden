@@ -70,6 +70,70 @@
     #lives-count { font-family:var(--font-d); font-size:22px; font-weight:900; line-height:1; color:var(--cert-accent); display:block; }
     #lives-sublabel { font-family:var(--font-d); font-size:8px; font-weight:600; letter-spacing:.8px; text-transform:uppercase; opacity:.6; display:block; margin-top:1px; }
 
+
+    /* ── WEATHER BUTTON + DROPDOWN ── */
+    #weather-btn {
+      flex-shrink:0;
+      background:rgba(0,0,0,.25);
+      border:1px solid rgba(255,255,255,.2);
+      border-radius:12px;
+      padding:8px 10px;
+      text-align:center;
+      min-width:44px;
+      cursor:pointer;
+      touch-action:manipulation;
+      position:relative;
+      color:white;
+      display:flex; flex-direction:column; align-items:center; gap:1px;
+    }
+    #weather-btn:active { background:rgba(0,0,0,.4); }
+    #weather-btn-icon { font-size:18px; line-height:1; display:block; }
+    #weather-btn-label { font-family:var(--font-d); font-size:8px; font-weight:700; letter-spacing:.8px; text-transform:uppercase; opacity:.65; display:block; }
+
+    #weather-dropdown {
+      position:absolute;
+      top:calc(100% + 10px);
+      right:0;
+      width:260px;
+      background:white;
+      border-radius:16px;
+      box-shadow:0 8px 32px rgba(0,0,0,.22);
+      border:1px solid var(--gray-200);
+      overflow:hidden;
+      z-index:9999;
+      display:none;
+      transform-origin:top right;
+      animation:weatherIn .18s ease;
+    }
+    #weather-dropdown.open { display:block; }
+    @keyframes weatherIn { from{opacity:0;transform:scale(.92)} to{opacity:1;transform:scale(1)} }
+
+    .wx-header {
+      background:var(--cert-green); color:white;
+      padding:10px 14px 8px;
+      display:flex; align-items:center; justify-content:space-between;
+      position:relative;
+    }
+    .wx-header::after { content:''; position:absolute; bottom:0; left:0; right:0; height:2px; background:var(--cert-accent); }
+    .wx-title { font-family:var(--font-d); font-size:13px; font-weight:800; text-transform:uppercase; letter-spacing:.5px; }
+    .wx-loc   { font-size:10px; opacity:.7; font-weight:500; }
+
+    .wx-days { display:flex; gap:12px; padding:16px; }
+    .wx-day {
+      flex:1; padding:16px 10px 18px;
+      display:flex; flex-direction:column; align-items:center; gap:5px;
+      background:var(--gray-50); border:1px solid var(--gray-200);
+      border-radius:16px;
+    }
+    .wx-day-name { font-family:var(--font-d); font-size:13px; font-weight:800; text-transform:uppercase; letter-spacing:.5px; color:var(--gray-600); }
+    .wx-emoji    { font-size:36px; line-height:1; margin:4px 0; }
+    .wx-cond     { font-size:11px; font-weight:600; color:var(--gray-500); text-align:center; text-transform:uppercase; letter-spacing:.3px; line-height:1.3; }
+    .wx-temps    { font-family:var(--font-d); font-size:18px; font-weight:800; color:var(--gray-800); margin-top:4px; }
+    .wx-temps span { color:var(--gray-400); font-weight:600; }
+    .wx-wind     { font-size:11px; color:var(--gray-500); font-weight:600; text-align:center; }
+    .wx-gust     { font-size:11px; color:#f59e0b; font-weight:700; }
+    .wx-loading  { padding:40px 16px; text-align:center; font-size:13px; color:var(--gray-400); font-family:var(--font-d); text-transform:uppercase; letter-spacing:.5px; }
+    .wx-error    { padding:24px; text-align:center; font-size:12px; color:#dc2626; font-family:var(--font-d); }
     /* ── MAP ── */
     #map { flex:1; position:relative; touch-action:pan-x pan-y; }
 
@@ -95,6 +159,57 @@
     .btn-primary { background:var(--cert-green); color:white; border:none; padding:14px 28px; border-radius:10px; font-family:var(--font-d); font-size:17px; font-weight:700; letter-spacing:.5px; text-transform:uppercase; cursor:pointer; touch-action:manipulation; }
     .btn-primary:active { transform:scale(.97); }
 
+    /* ── KILL SWITCH SCREEN ── */
+    #kill-screen {
+      position:fixed; inset:0; z-index:99999;
+      background:var(--cert-green);
+      display:none; flex-direction:column; align-items:center; justify-content:center;
+      padding:40px 32px; text-align:center; gap:20px;
+    }
+    #kill-screen.visible { display:flex; }
+    #kill-screen .kill-logo { height:80px; width:auto; filter:drop-shadow(0 2px 8px rgba(0,0,0,.25)); }
+    #kill-screen .kill-icon { font-size:64px; line-height:1; }
+    #kill-screen .kill-title {
+      font-family:var(--font-d); font-size:28px; font-weight:900;
+      text-transform:uppercase; letter-spacing:.5px;
+      color:var(--cert-accent); line-height:1.15;
+    }
+    #kill-screen .kill-msg {
+      font-family:var(--font-b); font-size:17px; font-weight:500;
+      color:rgba(255,255,255,.9); line-height:1.6; max-width:360px;
+    }
+    #kill-screen .kill-accent { width:56px; height:4px; border-radius:2px; background:var(--cert-accent); }
+
+    /* ── LOGIN SCREEN ── */
+    #login-screen {
+      position:fixed; inset:0; z-index:10000;
+      background:var(--cert-green);
+      display:flex; flex-direction:column; align-items:center; justify-content:center;
+      padding:24px 20px;
+      padding-top:max(env(safe-area-inset-top,0px), 24px);
+    }
+    #login-screen.hidden { display:none; }
+    .login-card {
+      background:white; border-radius:20px;
+      padding:32px 28px 28px;
+      width:100%; max-width:360px;
+      box-shadow:0 20px 60px rgba(0,0,0,.35);
+      display:flex; flex-direction:column; align-items:center;
+    }
+    .login-logo { height:72px; width:auto; margin-bottom:18px; filter:drop-shadow(0 2px 6px rgba(0,0,0,.15)); }
+    .login-title { font-family:var(--font-d); font-size:24px; font-weight:800; text-transform:uppercase; letter-spacing:.5px; color:var(--cert-green); text-align:center; line-height:1.15; margin-bottom:4px; }
+    .login-subtitle { font-size:13px; color:var(--gray-400); text-align:center; margin-bottom:10px; font-weight:500; }
+    .login-accent-bar { width:48px; height:4px; border-radius:2px; background:var(--cert-accent); margin-bottom:22px; }
+    .login-input-wrap { position:relative; width:100%; margin-bottom:14px; }
+    .login-input { width:100%; padding:16px 48px 16px 18px; border:2px solid var(--gray-200); border-radius:12px; font-family:var(--font-b); font-size:16px; color:var(--gray-800); background:var(--gray-50); outline:none; transition:border-color .2s; }
+    .login-input:focus { border-color:var(--cert-green); background:white; }
+    .login-input.shake { animation:loginshake .4s ease; border-color:#dc2626; }
+    @keyframes loginshake { 0%,100%{transform:translateX(0)} 20%{transform:translateX(-8px)} 40%{transform:translateX(8px)} 60%{transform:translateX(-6px)} 80%{transform:translateX(6px)} }
+    .login-eye { position:absolute; right:14px; top:50%; transform:translateY(-50%); background:none; border:none; cursor:pointer; padding:4px; color:var(--gray-400); font-size:18px; line-height:1; touch-action:manipulation; }
+    .login-btn { width:100%; padding:16px; background:var(--cert-green); color:white; border:none; border-radius:12px; font-family:var(--font-d); font-size:18px; font-weight:800; letter-spacing:.8px; text-transform:uppercase; cursor:pointer; touch-action:manipulation; box-shadow:0 4px 14px rgba(30,82,56,.35); transition:background .15s; margin-top:4px; }
+    .login-btn:active { transform:scale(.97); background:var(--cert-dark); }
+    .login-btn:disabled { background:var(--gray-300); box-shadow:none; cursor:not-allowed; }
+    .login-error { margin-top:12px; color:#dc2626; font-size:13px; font-weight:600; text-align:center; min-height:18px; }
     /* ── DATA BADGE ── */
     #data-source-bar {
       position:fixed; top:calc(var(--header-h) + 10px); left:50%; transform:translateX(-50%);
@@ -106,12 +221,30 @@
     }
     #data-source-bar .dot { width:7px; height:7px; border-radius:50%; background:#10b981; flex-shrink:0; }
 
-    /* ── FAB CLUSTER (bottom-right) ── */
+    /* ── FAB SPEED-DIAL (bottom-right) ── */
     #fab-cluster {
-      position:fixed; bottom:20px; right:12px; z-index:650;
-      display:flex; flex-direction:column; gap:10px; align-items:flex-end;
+      position:fixed; bottom:max(16px, env(safe-area-inset-bottom, 16px)); right:12px; z-index:650;
+      display:flex; flex-direction:column-reverse; gap:10px; align-items:flex-end;
+      justify-content:flex-end;
     }
 
+    /* Main toggle button */
+    #fab-toggle {
+      background:var(--cert-green); color:white;
+      border:2px solid var(--cert-dark);
+      border-radius:999px; padding:10px 16px;
+      font-family:var(--font-d); font-weight:800; font-size:13px;
+      letter-spacing:.5px; text-transform:uppercase;
+      box-shadow:var(--sh-md); cursor:pointer;
+      display:flex; align-items:center; gap:6px;
+      min-height:40px; touch-action:manipulation; white-space:nowrap;
+      transition:background .15s;
+    }
+    #fab-toggle:active { transform:scale(.95); background:var(--cert-dark); }
+    #fab-toggle-icon { font-size:15px; transition:transform .25s; }
+    #fab-cluster.menu-open #fab-toggle-icon { transform:rotate(45deg); }
+
+    /* Speed-dial items — hidden by default */
     .fab {
       background:white; border:2px solid rgba(0,0,0,.08); border-radius:999px;
       padding:7px 12px; font-family:var(--font-d); font-weight:700; font-size:12px;
@@ -120,11 +253,27 @@
       display:flex; align-items:center; gap:5px;
       min-height:36px; color:var(--cert-green); touch-action:manipulation;
       white-space:nowrap;
+      opacity:0; pointer-events:none;
+      transform:translateY(12px) scale(.95);
+      transition:opacity .18s, transform .18s;
+      display:none;
     }
-    .fab:active { transform:scale(.95); }
+    #fab-cluster.menu-open .fab {
+      opacity:1; pointer-events:auto;
+      transform:translateY(0) scale(1);
+      display:flex;
+    }
+    /* Stagger delays — fab-locate is nth-child(2), weather is nth-child(5) */
+    #fab-cluster.menu-open .fab:nth-child(2) { transition-delay:.04s; }
+    #fab-cluster.menu-open .fab:nth-child(3) { transition-delay:.08s; }
+    #fab-cluster.menu-open .fab:nth-child(4) { transition-delay:.12s; }
+    #fab-cluster.menu-open .fab:nth-child(5) { transition-delay:.16s; }
+
+    .fab:active { transform:scale(.95) !important; }
     .fab.fab-locate { background:var(--cert-green); color:white; border-color:var(--cert-dark); }
     .fab.fab-locate.locating { background:#f59e0b; border-color:#d97706; }
     .fab.fab-locate.located  { background:#10b981; border-color:#059669; }
+    .fab.fab-weather { background:white; color:var(--cert-green); }
 
     /* ── LEGEND ── */
     .legend-ctrl { background:white; border-radius:12px; box-shadow:var(--sh-md); padding:10px 12px; font-family:var(--font-b); min-width:180px; z-index:640; position:relative; }
@@ -222,6 +371,68 @@
     .popup-btn { display:block; width:100%; padding:10px 14px; border-radius:9px; border:none; font-family:var(--font-d); font-size:14px; font-weight:700; letter-spacing:.5px; text-transform:uppercase; text-align:center; text-decoration:none; cursor:pointer; touch-action:manipulation; margin-bottom:6px; }
     .popup-btn:active  { transform:scale(.97); }
     .popup-btn-green   { background:var(--cert-green); color:white; box-shadow:0 3px 10px rgba(30,82,56,.3); }
+    .popup-btn-report  { background:#1d4ed8; color:white; box-shadow:0 3px 10px rgba(29,78,216,.3); display:block; width:100%; padding:14px 18px; border-radius:10px; border:none; font-family:var(--font-d); font-size:16px; font-weight:700; letter-spacing:.5px; text-transform:uppercase; text-align:center; cursor:pointer; touch-action:manipulation; margin-top:6px; margin-bottom:8px; }
+    .popup-btn-report:active { transform:scale(.97); }
+
+
+    /* ── WEATHER FAB PANEL ── */
+    /* ── WEATHER PANEL (bottom sheet — matches leaderboard) ── */
+    #weather-panel {
+      display:none; position:fixed; inset:0; z-index:11000;
+      background:rgba(0,0,0,.6);
+      align-items:flex-end; justify-content:center;
+    }
+    #weather-panel.open { display:flex; }
+
+    .wx-sheet {
+      background:white; width:100%; max-width:540px;
+      border-radius:24px 24px 0 0;
+      max-height:88vh; display:flex; flex-direction:column;
+      box-shadow:0 -8px 40px rgba(0,0,0,.3);
+      padding-bottom:env(safe-area-inset-bottom,0px);
+    }
+    .wx-handle { width:40px; height:4px; background:var(--gray-300); border-radius:2px; margin:12px auto 0; flex-shrink:0; }
+    .wx-sheet-header {
+      background:var(--cert-green); color:white;
+      padding:16px 20px 14px;
+      position:relative; flex-shrink:0;
+    }
+    .wx-sheet-header::after { content:''; position:absolute; bottom:0; left:0; right:0; height:3px; background:var(--cert-accent); }
+    .wx-sheet-header-top { display:flex; align-items:center; justify-content:space-between; margin-bottom:4px; }
+    .wx-sheet-title { font-family:var(--font-d); font-size:24px; font-weight:900; text-transform:uppercase; letter-spacing:.5px; }
+    .wx-sheet-sub { font-size:13px; opacity:.8; font-weight:500; }
+    .wx-close { background:rgba(255,255,255,.15); border:none; color:white; width:36px; height:36px; border-radius:50%; font-size:20px; cursor:pointer; display:flex; align-items:center; justify-content:center; flex-shrink:0; touch-action:manipulation; }
+    .wx-close:active { background:rgba(255,255,255,.3); }
+    .wx-body { flex:1; overflow-y:auto; -webkit-overflow-scrolling:touch; }
+    /* ── REPORT EMAIL GATE ── */
+    #reportGate { position:fixed; inset:0; z-index:11000; background:rgba(0,0,0,.6); display:none; align-items:center; justify-content:center; padding:20px; }
+    #reportGate.open { display:flex; }
+    .rg-card { background:white; border-radius:20px; padding:28px 24px 24px; width:100%; max-width:360px; box-shadow:0 20px 60px rgba(0,0,0,.4); display:flex; flex-direction:column; align-items:center; position:relative; }
+    .rg-close { position:absolute; top:14px; right:14px; background:var(--gray-100); border:none; border-radius:50%; width:30px; height:30px; font-size:16px; cursor:pointer; display:flex; align-items:center; justify-content:center; color:var(--gray-600); touch-action:manipulation; }
+    .rg-close:active { background:var(--gray-200); }
+    .rg-logo { height:56px; width:auto; margin-bottom:14px; }
+    .rg-title { font-family:var(--font-d); font-size:20px; font-weight:800; text-transform:uppercase; color:var(--cert-green); text-align:center; margin-bottom:3px; }
+    .rg-sub { font-size:12px; color:var(--gray-400); text-align:center; margin-bottom:6px; }
+    .rg-accent { width:40px; height:3px; border-radius:2px; background:var(--cert-accent); margin-bottom:18px; }
+    .rg-label { font-size:13px; color:var(--gray-600); font-weight:600; margin-bottom:8px; text-align:center; line-height:1.4; }
+    .rg-input { width:100%; padding:14px 16px; border:2px solid var(--gray-200); border-radius:10px; font-size:16px; font-family:var(--font-b); color:var(--gray-800); background:var(--gray-50); outline:none; transition:border-color .2s; margin-bottom:12px; }
+    .rg-input:focus { border-color:#1d4ed8; background:white; }
+    .rg-input.shake { animation:loginshake .4s ease; border-color:#dc2626; }
+    .rg-btn { width:100%; padding:15px; background:#1d4ed8; color:white; border:none; border-radius:10px; font-family:var(--font-d); font-size:17px; font-weight:800; letter-spacing:.5px; text-transform:uppercase; cursor:pointer; touch-action:manipulation; box-shadow:0 4px 14px rgba(29,78,216,.3); }
+    .rg-btn:active { transform:scale(.97); }
+    .rg-btn:disabled { background:var(--gray-300); box-shadow:none; cursor:not-allowed; }
+    .rg-error { margin-top:10px; color:#dc2626; font-size:12px; font-weight:600; text-align:center; min-height:16px; }
+
+    /* ── REPORT FORM MODAL ── */
+    #reportFormModal { position:fixed; inset:0; z-index:11000; background:rgba(0,0,0,.65); display:none; align-items:flex-end; justify-content:center; }
+    #reportFormModal.open { display:flex; }
+    .rf-sheet { background:white; border-radius:20px 20px 0 0; width:100%; max-width:640px; height:88vh; display:flex; flex-direction:column; overflow:hidden; }
+    .rf-header { background:var(--cert-green); color:white; padding:16px 18px; display:flex; align-items:center; justify-content:space-between; flex-shrink:0; position:relative; }
+    .rf-header::after { content:''; position:absolute; bottom:0; left:0; right:0; height:3px; background:var(--cert-accent); }
+    .rf-title { font-family:var(--font-d); font-size:17px; font-weight:800; text-transform:uppercase; letter-spacing:.5px; }
+    .rf-close { background:rgba(255,255,255,.15); border:none; border-radius:50%; width:30px; height:30px; color:white; font-size:16px; cursor:pointer; display:flex; align-items:center; justify-content:center; touch-action:manipulation; }
+    .rf-close:active { background:rgba(255,255,255,.3); }
+    .rf-iframe { flex:1; border:none; width:100%; }
     .popup-btn-maps    { background:#4285f4; color:white !important; box-shadow:0 3px 10px rgba(66,133,244,.3); }
     .popup-btn-maps:visited,.popup-btn-maps:hover,.popup-btn-maps:link { color:white !important; }
 
@@ -334,6 +545,8 @@
       #header p  { font-size:13px; }
       .lb-sheet { border-radius:20px; margin:auto; max-height:80vh; }
       #leaderboard-panel { align-items:center; }
+      .wx-sheet { border-radius:20px; margin:auto; max-height:80vh; }
+      #weather-panel { align-items:center; }
       .modal-content { width:90%; max-width:680px; height:88vh; margin:6vh auto; border-radius:20px; }
       .modal-header  { border-radius:20px 20px 0 0; }
     }
@@ -370,6 +583,7 @@
     </div>
   </div>
 
+
   <!-- MAP -->
   <div id="map">
     <div id="loading-screen">
@@ -384,17 +598,43 @@
     </div>
     <div id="data-source-bar">
       <div class="dot" id="freshness-dot"></div>
-      <span id="freshness-label">Loaded just now</span>
+      <span id="freshness-label">Next test in —</span>
     </div>
 
   </div>
 </div>
 
-<!-- FAB CLUSTER - outside map for independent stacking context -->
+<!-- KILL SWITCH SCREEN -->
+<div id="kill-screen">
+  <div class="kill-icon">⛈️</div>
+  <div class="kill-title">Testing Canceled</div>
+  <div class="kill-accent"></div>
+  <div class="kill-msg">Due to inclement weather, testing has been canceled. Please stay home and we'll see you on the next test.</div>
+</div>
+
+<!-- LOGIN SCREEN -->
+<div id="login-screen">
+  <div class="login-card">
+    <img class="login-logo" src="https://drive.google.com/thumbnail?id=16Lg4zmmXXKSeqZXpguuJMuZVAh3Xu9dv&sz=w200" alt="CERT Logo">
+    <div class="login-title">Frisco CERT<br>Siren Map</div>
+    <div class="login-subtitle">Authorized Personnel Only</div>
+    <div class="login-accent-bar"></div>
+    <div class="login-input-wrap">
+      <input id="login-pw" class="login-input" type="password" placeholder="Enter password" autocomplete="current-password" />
+      <button class="login-eye" onclick="toggleLoginEye()" tabindex="-1" aria-label="Show password">👁</button>
+    </div>
+    <button class="login-btn" id="login-btn" onclick="submitLogin()">Unlock Map</button>
+    <div class="login-error" id="login-error"></div>
+  </div>
+</div>
+
+<!-- FAB SPEED-DIAL - outside map for independent stacking context -->
 <div id="fab-cluster">
-  <button id="fab-legend"   class="fab"            onclick="toggleLegend()">🗺️ Legend</button>
-  <button id="fab-lb"       class="fab"            onclick="openLeaderboard()">🏆 Leaderboard</button>
-  <button id="fab-locate"   class="fab fab-locate" onclick="locateMe()">📍 Locate Me</button>
+  <button id="fab-toggle" onclick="toggleFabMenu()"><span id="fab-toggle-icon">＋</span> Menu</button>
+  <button id="fab-locate"  class="fab fab-locate"   onclick="locateMe()">📍 Locate Me</button>
+  <button id="fab-lb"      class="fab"              onclick="openLeaderboard()">🏆 Leaderboard</button>
+  <button id="fab-legend"  class="fab"              onclick="toggleLegend()">🗺️ Legend</button>
+  <button id="fab-weather" class="fab fab-weather"  onclick="toggleWeatherFab()">☁️ Weather</button>
 </div>
 
 <!-- PHOTO LIGHTBOX -->
@@ -418,6 +658,49 @@
     <div class="lb-body" id="lb-body">
       <div class="lb-empty">Loading rankings…</div>
     </div>
+  </div>
+</div>
+
+<!-- WEATHER PANEL -->
+<div id="weather-panel" onclick="closeWxIfBg(event)">
+  <div class="wx-sheet">
+    <div class="wx-handle"></div>
+    <div class="wx-sheet-header">
+      <div class="wx-sheet-header-top">
+        <span class="wx-sheet-title">☁️ Weather</span>
+        <button class="wx-close" onclick="closeWeatherPanel()">✕</button>
+      </div>
+      <div class="wx-sheet-sub">3-Day Forecast — Frisco, TX</div>
+    </div>
+    <div class="wx-body" id="wx-panel-body">
+      <div class="wx-loading">Loading forecast…</div>
+    </div>
+  </div>
+</div>
+
+<!-- REPORT EMAIL GATE -->
+<div id="reportGate">
+  <div class="rg-card">
+    <button class="rg-close" onclick="closeReportGate()">✕</button>
+    <img class="rg-logo" src="https://drive.google.com/thumbnail?id=16Lg4zmmXXKSeqZXpguuJMuZVAh3Xu9dv&sz=w200" alt="CERT Logo">
+    <div class="rg-title">Siren Report</div>
+    <div class="rg-sub">Authorized Volunteers Only</div>
+    <div class="rg-accent"></div>
+    <div class="rg-label">Enter your email address to<br>access the report form</div>
+    <input id="reportEmailInput" class="rg-input" type="email" placeholder="your@email.com" autocomplete="email" />
+    <button class="rg-btn" id="reportGateBtn" onclick="submitReportGate()">Continue</button>
+    <div class="rg-error" id="reportGateError"></div>
+  </div>
+</div>
+
+<!-- REPORT FORM MODAL -->
+<div id="reportFormModal">
+  <div class="rf-sheet">
+    <div class="rf-header">
+      <span class="rf-title" id="reportFormTitle">📋 Siren Report</span>
+      <button class="rf-close" onclick="closeReportForm()">✕</button>
+    </div>
+    <iframe class="rf-iframe" id="reportFormIframe" src="" frameborder="0"></iframe>
   </div>
 </div>
 
@@ -524,9 +807,107 @@ window.addEventListener('resize', setVh);
 window.addEventListener('orientationchange',()=>setTimeout(setVh,200));
 
 /* =====================================================
-   BOOT
+   KILL SWITCH — checked before anything else loads
+   Reads gid=224036219, column B (row 2). If non-empty → block.
    ===================================================== */
-window.addEventListener('DOMContentLoaded', startLoad);
+const KILL_GID = 224036219;
+
+async function checkKillSwitch() {
+  try {
+    // Resolve gid → sheet title via spreadsheet metadata
+    const metaUrl = `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}?key=${API_KEY}&fields=sheets.properties`;
+    const metaRes = await fetch(metaUrl);
+    const meta    = await metaRes.json();
+    const sheet   = (meta.sheets || []).find(s => s.properties.sheetId === KILL_GID);
+    if (!sheet) return false; // tab not found — don't block
+
+    const tabName = sheet.properties.title;
+    const dataUrl = `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/${encodeURIComponent(tabName + '!B2')}?key=${API_KEY}`;
+    const dataRes = await fetch(dataUrl);
+    const data    = await dataRes.json();
+
+    // If B2 has any non-empty value → kill switch is ON
+    const val = (data.values || [])[0]?.[0] || '';
+    return val.trim().length > 0;
+  } catch (e) {
+    console.warn('Kill switch check failed, defaulting to open:', e);
+    return false;
+  }
+}
+
+window.addEventListener('DOMContentLoaded', async () => {
+  const killed = await checkKillSwitch();
+  if (killed) {
+    document.getElementById('kill-screen').classList.add('visible');
+    return; // stop — don't init login or anything else
+  }
+  initLogin();
+  fetchWeather();
+});
+
+/* =====================================================
+   LOGIN
+   ===================================================== */
+const PASSWORD_TAB = 'Password & Kill Switch';
+
+function initLogin(){
+  // Check session storage so you don't re-auth on reload
+  const _authedAt = parseInt(sessionStorage.getItem('cert_authed_at')||'0');
+  if(_authedAt && (Date.now() - _authedAt) < 60*60*1000){
+    document.getElementById('login-screen').classList.add('hidden');
+    startLoad();
+    return;
+  } else {
+    sessionStorage.removeItem('cert_authed_at');
+  }
+  // Allow Enter key on the password field
+  document.getElementById('login-pw').addEventListener('keydown', e=>{
+    if(e.key==='Enter') submitLogin();
+  });
+}
+
+function toggleLoginEye(){
+  const inp = document.getElementById('login-pw');
+  inp.type = inp.type==='password' ? 'text' : 'password';
+}
+
+function submitLogin(){
+  const btn   = document.getElementById('login-btn');
+  const input = document.getElementById('login-pw');
+  const errEl = document.getElementById('login-error');
+  const typed = input.value.trim();
+  if(!typed){ shakeEl(input); errEl.textContent='Please enter a password.'; return; }
+  btn.disabled = true;
+  btn.textContent = 'Checking…';
+  errEl.textContent = '';
+  const pwUrl = `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/${encodeURIComponent(PASSWORD_TAB)}?key=${API_KEY}`;
+  fetch(pwUrl)
+    .then(r=>{ if(!r.ok) throw new Error('Could not reach server.'); return r.json(); })
+    .then(d=>{
+      const rows = d.values || [];
+      // Row 0 is header Password, row 1+ are values
+      const correct = rows.slice(1).map(r=>(r[0]||'').trim()).find(p=>p.length>0);
+      if(!correct) throw new Error('No password configured.');
+      if(typed === correct){
+        sessionStorage.setItem('cert_authed_at', Date.now().toString());
+        document.getElementById('login-screen').classList.add('hidden');
+        startLoad();
+      } else {
+        shakeEl(input);
+        errEl.textContent = 'Incorrect password. Please try again.';
+        input.value = '';
+        input.focus();
+        btn.disabled = false;
+        btn.textContent = 'Unlock Map';
+      }
+    })
+    .catch(err=>{
+      errEl.textContent = 'Error: ' + err.message;
+      btn.disabled = false;
+      btn.textContent = 'Unlock Map';
+    });
+}
+
 
 /* =====================================================
    DATA LOADING
@@ -575,6 +956,7 @@ function rowsToSirens(rows){
     instructions:   r[14] ||'',
     population:     parseInt(String(r[15]||'0').replace(/,/g,''))||0,
     imageUrl:       r[16] ||'',
+    currentSignup:  r[17] ||'',
   }));
 }
 
@@ -656,7 +1038,8 @@ function initMap(sirens){
 
   map = L.map('map',{
     zoomControl:false, touchZoom:true, scrollWheelZoom:false,
-    doubleClickZoom:true, boxZoom:false, dragging:true, tap:true, tapTolerance:25
+    doubleClickZoom:true, boxZoom:false, dragging:true, tap:true, tapTolerance:25,
+    zoomDelta:0.5, zoomSnap:0.5
   }).setView([33.1507,-96.8236],12);
 
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
@@ -793,8 +1176,10 @@ function buildPopup(siren, color){
         <div class="popup-row"><span class="popup-label">Sign-up</span><span class="popup-value">${siren.daysSinceSignup} days ago &nbsp;(${esc(siren.lastSignUpDate)})</span></div>
         <div class="popup-row"><span class="popup-label">Last Visit</span><span class="popup-value">${siren.daysSinceVisit} days ago &nbsp;(${esc(siren.lastVisitDate)})</span></div>`;
   } else {
+    const escapedEmail = esc(siren.currentSignup).replace(/'/g,"\\'");
     h+=`<div class="assigned-chip">✅ <span>Volunteer already assigned for next test</span></div>
-        <div class="popup-row"><span class="popup-label">Last Visit</span><span class="popup-value">${siren.daysSinceVisit} days ago &nbsp;(${esc(siren.lastVisitDate)})</span></div>`;
+        <div class="popup-row"><span class="popup-label">Last Sign Up</span><span class="popup-value">${siren.daysSinceSignup} days ago &nbsp;(${esc(siren.lastSignUpDate)})</span></div>
+        <button class="popup-btn popup-btn-report" onclick="openReportGate(${siren.id},'${escapedEmail}')">📋 Report on This Siren</button>`;
   }
 
   if(siren.description && siren.description!=='N/A'){
@@ -814,6 +1199,82 @@ function buildPopup(siren, color){
   h+=`</div></div>`;
   return h;
 }
+
+/* =====================================================
+   REPORT GATE — email verification before form
+   ===================================================== */
+let _reportExpectedEmail = '';
+let _reportSirenId = '';
+
+function openReportGate(sirenId, assignedEmail){
+  _reportSirenId = sirenId;
+  _reportExpectedEmail = (assignedEmail||'').trim().toLowerCase();
+  document.getElementById('reportEmailInput').value = '';
+  document.getElementById('reportGateError').textContent = '';
+  const btn = document.getElementById('reportGateBtn');
+  btn.disabled = false;
+  btn.textContent = 'Continue';
+  document.getElementById('reportGate').classList.add('open');
+  setTimeout(()=>document.getElementById('reportEmailInput').focus(), 200);
+}
+
+function closeReportGate(){
+  document.getElementById('reportGate').classList.remove('open');
+}
+
+function submitReportGate(){
+  const input = document.getElementById('reportEmailInput');
+  const errEl = document.getElementById('reportGateError');
+  const btn   = document.getElementById('reportGateBtn');
+  const typed = (input.value||'').trim().toLowerCase();
+  errEl.textContent = '';
+
+  if(!typed){ shakeEl(input); errEl.textContent='Please enter your email address.'; return; }
+  if(!typed.includes('@')){ shakeEl(input); errEl.textContent='Please enter a valid email address.'; return; }
+
+  if(_reportExpectedEmail && typed !== _reportExpectedEmail){
+    shakeEl(input);
+    errEl.textContent = 'Email does not match the volunteer on record.';
+    input.value = '';
+    return;
+  }
+
+  // Auth passed — open the report form
+  closeReportGate();
+  openReportForm(_reportSirenId);
+}
+
+function openReportForm(sirenId){
+  const formUrl = 'https://docs.google.com/forms/d/e/1FAIpQLSePIb96jbsS4WM0RVeDaR2Iq9t2hnF26yqYdWTCGN90wdZHug/viewform?embedded=true';
+  document.getElementById('reportFormTitle').textContent = '📋 Siren #' + sirenId + ' Report';
+  document.getElementById('reportFormIframe').src = formUrl;
+  document.getElementById('reportFormModal').classList.add('open');
+}
+
+function closeReportForm(){
+  document.getElementById('reportFormModal').classList.remove('open');
+  document.getElementById('reportFormIframe').src = '';
+}
+
+function shakeEl(el){
+  el.classList.remove('shake');
+  void el.offsetWidth;
+  el.classList.add('shake');
+  setTimeout(()=>el.classList.remove('shake'), 500);
+}
+
+// Close report gate on backdrop click
+document.addEventListener('DOMContentLoaded', ()=>{
+  document.getElementById('reportGate').addEventListener('click', e=>{
+    if(e.target === document.getElementById('reportGate')) closeReportGate();
+  });
+  document.getElementById('reportFormModal').addEventListener('click', e=>{
+    if(e.target === document.getElementById('reportFormModal')) closeReportForm();
+  });
+  document.getElementById('reportEmailInput').addEventListener('keydown', e=>{
+    if(e.key==='Enter') submitReportGate();
+  });
+});
 
 /* =====================================================
    PHOTO LIGHTBOX
@@ -1044,40 +1505,200 @@ function showError(msg){
 function hideError(){ document.getElementById('error-screen').classList.remove('visible'); }
 
 /* =====================================================
-   FRESHNESS TIMER
+   NEXT TEST COUNTDOWN (every Wednesday 12:00 PM Central)
    ===================================================== */
 let freshnessInterval = null;
 
+function getNextWednesdayNoon(){
+  // Work in Central Time by using toLocaleString trick
+  const now = new Date();
+  // Get current time in CT offset (CST = UTC-6, CDT = UTC-5)
+  // We'll compute next Wed 12:00 PM CT as a UTC ms value
+  const CT_OFFSET_MS = (() => {
+    // Use Intl to determine current CT offset
+    const ct = new Intl.DateTimeFormat('en-US', {
+      timeZone: 'America/Chicago',
+      hour: 'numeric', hour12: false,
+      minute: 'numeric'
+    }).formatToParts(now);
+    const ctHour = parseInt(ct.find(p=>p.type==='hour').value);
+    const ctMin  = parseInt(ct.find(p=>p.type==='minute').value);
+    const utcHour = now.getUTCHours();
+    const utcMin  = now.getUTCMinutes();
+    let offset = (utcHour * 60 + utcMin) - (ctHour * 60 + ctMin);
+    if(offset > 720)  offset -= 1440;
+    if(offset < -720) offset += 1440;
+    return offset * 60 * 1000; // ms
+  })();
+
+  // Find next Wednesday 12:00 PM CT
+  // CT noon = UTC noon + offset
+  const ctNow = new Date(now.getTime() - CT_OFFSET_MS);
+  const ctDay = ctNow.getUTCDay(); // 0=Sun, 3=Wed
+  const ctHour = ctNow.getUTCHours();
+  const ctMin  = ctNow.getUTCMinutes();
+  const ctSec  = ctNow.getUTCSeconds();
+
+  let daysUntilWed = (3 - ctDay + 7) % 7;
+  // If today is Wednesday and it's before noon, use today; else next week
+  if(daysUntilWed === 0 && (ctHour < 12 || (ctHour === 12 && ctMin === 0 && ctSec === 0))){
+    daysUntilWed = 0;
+  } else if(daysUntilWed === 0){
+    daysUntilWed = 7;
+  }
+
+  const nextWed = new Date(ctNow);
+  nextWed.setUTCDate(ctNow.getUTCDate() + daysUntilWed);
+  nextWed.setUTCHours(12, 0, 0, 0); // noon CT = noon in ctNow space
+
+  // Convert back to real UTC
+  return new Date(nextWed.getTime() + CT_OFFSET_MS);
+}
+
 function startFreshnessTimer(){
   if(freshnessInterval) clearInterval(freshnessInterval);
-  const loadedAt = Date.now();
   const dot   = document.getElementById('freshness-dot');
   const label = document.getElementById('freshness-label');
 
   function tick(){
-    const elapsed = Math.floor((Date.now() - loadedAt) / 1000);
-    const mins = Math.floor(elapsed / 60);
-    const secs = elapsed % 60;
+    const now  = new Date();
+    const next = getNextWednesdayNoon();
+    const diff = Math.max(0, Math.floor((next - now) / 1000));
 
-    if(elapsed < 60){
-      label.textContent = `Loaded ${secs}s ago`;
-    } else {
-      label.textContent = `Last updated ${mins}m ${secs}s ago`;
+    const days  = Math.floor(diff / 86400);
+    const hours = Math.floor((diff % 86400) / 3600);
+    const mins  = Math.floor((diff % 3600) / 60);
+    const secs  = diff % 60;
+
+    if(diff === 0){
+      label.textContent = '🚨 TEST IN PROGRESS';
+      dot.style.background = '#dc2626';
+      return;
     }
 
-    // Dot color: green < 5min, yellow 5-10min, red 10min+
-    if(elapsed < 300){
-      dot.style.background = '#10b981'; // green
-    } else if(elapsed < 600){
-      dot.style.background = '#f59e0b'; // yellow
+    if(days > 0){
+      label.textContent = `Next test in ${days}d ${String(hours).padStart(2,'0')}h ${String(mins).padStart(2,'0')}m`;
+    } else if(hours > 0){
+      label.textContent = `Next test in ${hours}h ${String(mins).padStart(2,'0')}m ${String(secs).padStart(2,'0')}s`;
     } else {
-      dot.style.background = '#dc2626'; // red
+      label.textContent = `Next test in ${String(mins).padStart(2,'0')}m ${String(secs).padStart(2,'0')}s`;
+    }
+
+    // Dot: green > 1 day, yellow < 1 day, red < 1 hour
+    if(diff > 86400){
+      dot.style.background = '#10b981';
+    } else if(diff > 3600){
+      dot.style.background = '#f59e0b';
+    } else {
+      dot.style.background = '#dc2626';
     }
   }
 
   tick();
   freshnessInterval = setInterval(tick, 1000);
 }
+
+/* =====================================================
+   WEATHER — Open-Meteo, fetched on load
+   ===================================================== */
+const WMO = {
+  0:  ['☀️','Clear'],
+  1:  ['🌤️','Mostly Clear'],  2: ['⛅','Partly Cloudy'], 3: ['☁️','Overcast'],
+  45: ['🌫️','Fog'],           48: ['🌫️','Icy Fog'],
+  51: ['🌦️','Light Drizzle'], 53: ['🌦️','Drizzle'],     55: ['🌧️','Heavy Drizzle'],
+  61: ['🌧️','Light Rain'],    63: ['🌧️','Rain'],         65: ['🌧️','Heavy Rain'],
+  71: ['🌨️','Light Snow'],    73: ['🌨️','Snow'],         75: ['❄️','Heavy Snow'],
+  77: ['🌨️','Snow Grains'],
+  80: ['🌦️','Light Showers'], 81: ['🌧️','Showers'],      82: ['⛈️','Heavy Showers'],
+  85: ['🌨️','Snow Showers'],  86: ['❄️','Heavy Snow Showers'],
+  95: ['⛈️','Thunderstorm'],  96: ['⛈️','T-Storm + Hail'], 99: ['⛈️','T-Storm + Hail'],
+};
+
+let wxData = null;
+let weatherDropOpen = false;
+let fabMenuOpen = false;
+
+function toggleFabMenu(){
+  fabMenuOpen = !fabMenuOpen;
+  document.getElementById('fab-cluster').classList.toggle('menu-open', fabMenuOpen);
+}
+
+let wxFabOpen = false;
+function toggleWeatherFab(){
+  wxFabOpen = !wxFabOpen;
+  if(wxFabOpen) openWeatherPanel();
+  else closeWeatherPanel();
+}
+function openWeatherPanel(){
+  wxFabOpen = true;
+  document.getElementById('weather-panel').classList.add('open');
+  renderWeather('wx-panel-body');
+}
+function closeWeatherPanel(){
+  wxFabOpen = false;
+  document.getElementById('weather-panel').classList.remove('open');
+}
+function closeWxIfBg(e){ if(e.target===document.getElementById('weather-panel')) closeWeatherPanel(); }
+
+function fetchWeather(){
+  const url = 'https://api.open-meteo.com/v1/forecast?latitude=33.1507&longitude=-96.8236&daily=weathercode,temperature_2m_max,temperature_2m_min,windspeed_10m_max,windgusts_10m_max,winddirection_10m_dominant&temperature_unit=fahrenheit&windspeed_unit=mph&timezone=America%2FChicago&forecast_days=3';
+  fetch(url)
+    .then(r => r.json())
+    .then(d => {
+      wxData = d.daily;
+      // Update FAB weather button emoji to reflect today
+      const code = wxData.weathercode[0];
+      const icon = (WMO[code] || ['🌡️',''])[0];
+      const fabWxBtn = document.getElementById('fab-weather');
+      if(fabWxBtn) fabWxBtn.textContent = icon + ' Weather';
+    })
+    .catch(() => {
+      wxData = null;
+    });
+}
+
+// toggleWeather/closeWeatherOutside removed — header weather btn no longer exists
+
+function degToCompass(deg){
+  const dirs = ['N','NE','E','SE','S','SW','W','NW'];
+  return dirs[Math.round(deg / 45) % 8];
+}
+
+function renderWeather(targetId){
+  targetId = targetId || 'wx-body';
+  const body = document.getElementById(targetId);
+  if(!body) return;
+  if(!wxData){
+    body.innerHTML = '<div class="wx-error">⚠️ Weather unavailable</div>';
+    return;
+  }
+  const days = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+  let html = '<div class="wx-days">';
+  for(let i=0; i<3; i++){
+    const date  = new Date(wxData.time[i] + 'T12:00:00');
+    const code  = wxData.weathercode[i];
+    const hi    = Math.round(wxData.temperature_2m_max[i]);
+    const lo    = Math.round(wxData.temperature_2m_min[i]);
+    const wind  = Math.round(wxData.windspeed_10m_max[i]);
+    const gust  = wxData.windgusts_10m_max ? Math.round(wxData.windgusts_10m_max[i]) : null;
+    const dir   = wxData.winddirection_10m_dominant ? degToCompass(wxData.winddirection_10m_dominant[i]) : null;
+    const [emoji, cond] = WMO[code] || ['🌡️','Unknown'];
+    const dayName = i===0 ? 'Today' : i===1 ? 'Tomorrow' : days[date.getDay()];
+    const windLine = dir ? `💨 ${dir} ${wind} mph` : `💨 ${wind} mph`;
+    const gustLine = gust ? `<div class="wx-gust">Gusts ${gust} mph</div>` : '';
+    html += `<div class="wx-day">
+      <div class="wx-day-name">${dayName}</div>
+      <div class="wx-emoji">${emoji}</div>
+      <div class="wx-cond">${cond}</div>
+      <div class="wx-temps">${hi}° <span>/ ${lo}°</span></div>
+      <div class="wx-wind">${windLine}</div>
+      ${gustLine}
+    </div>`;
+  }
+  html += '</div>';
+  body.innerHTML = html;
+}
+
 </script>
 </body>
 </html>
