@@ -1,0 +1,1083 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1.0, user-scalable=no">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <title>Frisco Tornado Siren Volunteer Map</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700;800;900&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet">
+
+  <style>
+    *, *::before, *::after { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+
+    :root {
+      --vh: 1vh;
+      --header-h: 88px;
+      --cert-green:  #1E5238;
+      --cert-dark:   #163d29;
+      --cert-accent: #f0a500;
+      --gray-50:  #f9fafb;
+      --gray-100: #f3f4f6;
+      --gray-200: #e5e7eb;
+      --gray-300: #d1d5db;
+      --gray-400: #9ca3af;
+      --gray-600: #4b5563;
+      --gray-800: #1f2937;
+      --font-d: 'Barlow Condensed','Arial Narrow',Arial,sans-serif;
+      --font-b: 'Barlow',system-ui,sans-serif;
+      --sh-sm: 0 1px 4px rgba(0,0,0,.12);
+      --sh-md: 0 4px 16px rgba(0,0,0,.18);
+      --sh-lg: 0 8px 32px rgba(0,0,0,.22);
+    }
+
+    html,body { height:100%; width:100%; overflow:hidden; font-family:var(--font-b); background:#1a1a1a; }
+
+    /* ── LAYOUT ── */
+    #app { display:flex; flex-direction:column; height:100vh; height:calc(var(--vh,1vh)*100); }
+
+    /* ── HEADER ── */
+    #header {
+      position:relative; z-index:500;
+      background:var(--cert-green); color:white;
+      display:flex; align-items:center; gap:12px;
+      padding:0 16px;
+      padding-top:env(safe-area-inset-top,0px);
+      height:var(--header-h);
+      box-shadow:0 2px 12px rgba(0,0,0,.35);
+      flex-shrink:0;
+    }
+    #header::after { content:''; position:absolute; bottom:0; left:0; right:0; height:3px; background:var(--cert-accent); }
+
+    #header-logo { height:48px; width:auto; flex-shrink:0; filter:drop-shadow(0 2px 4px rgba(0,0,0,.3)); }
+    #header-text { flex:1; min-width:0; }
+    #header h1 { font-family:var(--font-d); font-size:20px; font-weight:800; letter-spacing:.4px; line-height:1.1; text-transform:uppercase; }
+    #header p  { font-size:11px; opacity:.85; margin-top:3px; font-weight:500; line-height:1.3; }
+
+    /* Lives Protected pill */
+    #lives-pill {
+      flex-shrink:0;
+      background:rgba(0,0,0,.25);
+      border:1px solid rgba(255,255,255,.2);
+      border-radius:12px;
+      padding:8px 12px;
+      text-align:center;
+      min-width:72px;
+    }
+    #lives-label { font-family:var(--font-d); font-size:9px; font-weight:700; letter-spacing:1.2px; text-transform:uppercase; opacity:.75; display:block; }
+    #lives-count { font-family:var(--font-d); font-size:22px; font-weight:900; line-height:1; color:var(--cert-accent); display:block; }
+    #lives-sublabel { font-family:var(--font-d); font-size:8px; font-weight:600; letter-spacing:.8px; text-transform:uppercase; opacity:.6; display:block; margin-top:1px; }
+
+    /* ── MAP ── */
+    #map { flex:1; position:relative; touch-action:pan-x pan-y; }
+
+    /* ── LOADING ── */
+    #loading-screen {
+      position:absolute; inset:0; z-index:9999;
+      background:var(--cert-green);
+      display:flex; flex-direction:column; align-items:center; justify-content:center;
+      color:white; gap:20px;
+    }
+    #loading-screen.hidden { display:none; }
+    .spinner { width:48px; height:48px; border:4px solid rgba(255,255,255,.2); border-top-color:var(--cert-accent); border-radius:50%; animation:spin .9s linear infinite; }
+    @keyframes spin { to { transform:rotate(360deg); } }
+    #loading-screen p { font-family:var(--font-d); font-size:18px; font-weight:700; letter-spacing:1px; text-transform:uppercase; opacity:.9; }
+
+    /* ── ERROR ── */
+    #error-screen { position:absolute; inset:0; z-index:9998; background:#fff; display:none; flex-direction:column; align-items:center; justify-content:center; padding:32px; text-align:center; gap:16px; }
+    #error-screen.visible { display:flex; }
+    #error-screen h2 { font-family:var(--font-d); font-size:26px; color:#dc2626; text-transform:uppercase; }
+    #error-screen p  { color:var(--gray-600); font-size:15px; line-height:1.6; }
+    #error-detail { font-family:monospace; font-size:12px; background:var(--gray-100); padding:12px; border-radius:8px; color:var(--gray-800); max-width:500px; word-break:break-all; text-align:left; }
+
+    .btn-primary { background:var(--cert-green); color:white; border:none; padding:14px 28px; border-radius:10px; font-family:var(--font-d); font-size:17px; font-weight:700; letter-spacing:.5px; text-transform:uppercase; cursor:pointer; touch-action:manipulation; }
+    .btn-primary:active { transform:scale(.97); }
+
+    /* ── DATA BADGE ── */
+    #data-source-bar {
+      position:fixed; top:calc(var(--header-h) + 10px); left:50%; transform:translateX(-50%);
+      z-index:630; background:rgba(255,255,255,.97); border:1px solid var(--gray-200);
+      border-radius:999px; padding:6px 14px;
+      font-size:12px; font-family:var(--font-d); font-weight:700; letter-spacing:.5px; text-transform:uppercase;
+      color:var(--gray-600); box-shadow:var(--sh-sm);
+      display:none; align-items:center; gap:7px; white-space:nowrap;
+    }
+    #data-source-bar .dot { width:7px; height:7px; border-radius:50%; background:#10b981; flex-shrink:0; }
+
+    /* ── FAB CLUSTER (bottom-right) ── */
+    #fab-cluster {
+      position:fixed; bottom:20px; right:12px; z-index:650;
+      display:flex; flex-direction:column; gap:10px; align-items:flex-end;
+    }
+
+    .fab {
+      background:white; border:2px solid rgba(0,0,0,.08); border-radius:999px;
+      padding:7px 12px; font-family:var(--font-d); font-weight:700; font-size:12px;
+      letter-spacing:.5px; text-transform:uppercase;
+      box-shadow:var(--sh-md); cursor:pointer;
+      display:flex; align-items:center; gap:5px;
+      min-height:36px; color:var(--cert-green); touch-action:manipulation;
+      white-space:nowrap;
+    }
+    .fab:active { transform:scale(.95); }
+    .fab.fab-locate { background:var(--cert-green); color:white; border-color:var(--cert-dark); }
+    .fab.fab-locate.locating { background:#f59e0b; border-color:#d97706; }
+    .fab.fab-locate.located  { background:#10b981; border-color:#059669; }
+
+    /* ── LEGEND ── */
+    .legend-ctrl { background:white; border-radius:12px; box-shadow:var(--sh-md); padding:10px 12px; font-family:var(--font-b); min-width:180px; z-index:640; position:relative; }
+    .legend-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:10px; padding-bottom:8px; border-bottom:2px solid var(--cert-accent); }
+    .legend-title { font-family:var(--font-d); font-size:12px; font-weight:800; letter-spacing:1px; text-transform:uppercase; color:var(--cert-green); }
+    .legend-close { background:var(--gray-100); border:none; border-radius:50%; width:24px; height:24px; display:flex; align-items:center; justify-content:center; cursor:pointer; font-size:14px; color:var(--gray-600); flex-shrink:0; touch-action:manipulation; line-height:1; }
+    .legend-close:active { background:var(--gray-200); }
+    .legend-row { display:flex; align-items:center; gap:8px; margin-bottom:5px; }
+    .legend-dot { width:14px; height:14px; border-radius:50%; border:2px solid rgba(255,255,255,.8); box-shadow:var(--sh-sm); flex-shrink:0; }
+    .legend-row span { font-size:11px; color:var(--gray-600); font-weight:500; }
+    .legend-sep { border:none; border-top:1px solid var(--gray-200); margin:8px 0; }
+    .legend-boundary { width:14px; height:8px; border-radius:2px; background:rgba(59,130,246,.15); border:2px solid #1e3a8a; flex-shrink:0; }
+    .legend-ctrl.hidden { display:none; }
+
+    /* ── SIREN MARKERS ── */
+    .siren-marker {
+      width:32px; height:32px; border-radius:50%;
+      border:2px solid rgba(255,255,255,.9);
+      display:flex; align-items:center; justify-content:center;
+      color:white; font-family:var(--font-d); font-weight:800; font-size:13px;
+      box-shadow:var(--sh-md); cursor:pointer; position:relative;
+    }
+    .siren-marker.status-canceled     { opacity:.55; filter:grayscale(60%); }
+    .siren-marker.status-notscheduled { border-style:dashed; }
+    .siren-marker.urgent::before {
+      content:''; position:absolute; inset:-6px; border-radius:50%;
+      border:2px solid currentColor; opacity:.4;
+      animation:pulse-ring 1.8s ease-out infinite;
+    }
+    @keyframes pulse-ring { 0%{transform:scale(.85);opacity:.5} 100%{transform:scale(1.4);opacity:0} }
+
+    /* User location dot */
+    .user-location-dot {
+      width:20px; height:20px; border-radius:50%;
+      background:#4285f4; border:3px solid white;
+      box-shadow:0 0 0 4px rgba(66,133,244,.25);
+      animation:loc-pulse 2s ease-in-out infinite;
+    }
+    @keyframes loc-pulse { 0%,100%{box-shadow:0 0 0 4px rgba(66,133,244,.25)} 50%{box-shadow:0 0 0 8px rgba(66,133,244,.1)} }
+
+    /* ── POPUP ── */
+    .leaflet-popup-content-wrapper { border-radius:16px; box-shadow:var(--sh-lg); padding:0; overflow:hidden; border:none; max-height:62vh; display:flex; flex-direction:column; }
+    .leaflet-popup-content { margin:0; width:min(300px,80vw) !important; font-family:var(--font-b); flex:1; overflow-y:auto; -webkit-overflow-scrolling:touch; display:flex; flex-direction:column; }
+    .leaflet-popup-tip-container { display:none; }
+
+    .popup-header { background:var(--cert-green); color:white; padding:9px 12px 8px; position:relative; flex-shrink:0; }
+    .popup-header::after { content:''; position:absolute; bottom:0; left:0; right:0; height:3px; background:var(--cert-accent); }
+    .popup-siren-id { font-family:var(--font-d); font-size:10px; font-weight:700; letter-spacing:1.5px; text-transform:uppercase; opacity:.75; margin-bottom:2px; }
+    .popup-title    { font-family:var(--font-d); font-size:14px; font-weight:800; line-height:1.2; text-transform:uppercase; }
+
+    /* Popup body: two-column when photo present */
+    .popup-body { padding:8px 11px; overflow-y:auto; -webkit-overflow-scrolling:touch; flex:1; }
+    .popup-inner { display:flex; gap:12px; }
+    .popup-info  { flex:1; min-width:0; }
+    .popup-photo-col { flex-shrink:0; width:64px; display:flex; flex-direction:column; gap:4px; }
+
+    .popup-photo-thumb {
+      width:64px; height:96px; border-radius:8px;
+      object-fit:cover; cursor:pointer;
+      box-shadow:var(--sh-md); border:2px solid var(--gray-200);
+      transition:transform .15s;
+      background:var(--gray-100);
+    }
+    .popup-photo-thumb:active { transform:scale(.96); }
+    .popup-photo-hint { font-size:10px; color:var(--gray-400); text-align:center; font-weight:500; line-height:1.3; }
+
+    .popup-photo-placeholder {
+      width:64px; height:96px; border-radius:8px;
+      background:var(--gray-100); border:2px dashed var(--gray-300);
+      display:flex; flex-direction:column; align-items:center; justify-content:center;
+      gap:4px; color:var(--gray-400); font-size:11px; font-weight:500; text-align:center;
+    }
+    .popup-photo-placeholder span { font-size:22px; }
+
+    .popup-row   { display:flex; gap:5px; margin-bottom:6px; font-size:12px; line-height:1.4; }
+    .popup-label { color:var(--gray-400); font-weight:600; font-size:9px; text-transform:uppercase; letter-spacing:.5px; flex-shrink:0; padding-top:2px; min-width:74px; }
+    .popup-value { color:var(--gray-800); font-size:12px; }
+
+    .popup-badge { display:inline-block; padding:2px 7px; border-radius:20px; font-size:10px; font-weight:700; font-family:var(--font-d); letter-spacing:.5px; text-transform:uppercase; }
+    .badge-online       { background:#d1fae5; color:#065f46; }
+    .badge-canceled     { background:#fee2e2; color:#991b1b; }
+    .badge-notscheduled { background:#fef3c7; color:#92400e; }
+
+    .popup-divider { border:none; border-top:1px solid var(--gray-200); margin:7px 0; }
+    .popup-section-title { font-family:var(--font-d); font-size:9px; font-weight:700; letter-spacing:1.5px; text-transform:uppercase; color:var(--gray-400); margin-bottom:6px; }
+
+    .volunteer-urgency { display:flex; align-items:center; gap:7px; padding:7px 10px; border-radius:8px; margin-bottom:8px; font-size:12px; font-weight:600; }
+    .urgency-dot { width:9px; height:9px; border-radius:50%; flex-shrink:0; }
+
+    .info-box { background:var(--gray-50); border:1px solid var(--gray-200); border-radius:8px; padding:8px 10px; margin-bottom:6px; font-size:11px; color:var(--gray-600); line-height:1.5; }
+    .info-box-label { font-family:var(--font-d); font-size:9px; font-weight:700; letter-spacing:1px; text-transform:uppercase; color:var(--gray-400); margin-bottom:3px; }
+
+    .assigned-chip { display:flex; align-items:center; gap:7px; background:#f0fdf4; border:1px solid #bbf7d0; border-radius:8px; padding:7px 10px; margin-bottom:6px; font-size:12px; color:#065f46; font-weight:600; }
+
+    .popup-btn { display:block; width:100%; padding:10px 14px; border-radius:9px; border:none; font-family:var(--font-d); font-size:14px; font-weight:700; letter-spacing:.5px; text-transform:uppercase; text-align:center; text-decoration:none; cursor:pointer; touch-action:manipulation; margin-bottom:6px; }
+    .popup-btn:active  { transform:scale(.97); }
+    .popup-btn-green   { background:var(--cert-green); color:white; box-shadow:0 3px 10px rgba(30,82,56,.3); }
+    .popup-btn-maps    { background:#4285f4; color:white !important; box-shadow:0 3px 10px rgba(66,133,244,.3); }
+    .popup-btn-maps:visited,.popup-btn-maps:hover,.popup-btn-maps:link { color:white !important; }
+
+    .popup-footer { padding:0 11px 10px; flex-shrink:0; background:white; }
+
+    /* ── PHOTO LIGHTBOX ── */
+    #lightbox {
+      display:none; position:fixed; inset:0; z-index:20000;
+      background:rgba(0,0,0,.92);
+      align-items:center; justify-content:center;
+      flex-direction:column; gap:16px;
+    }
+    #lightbox.open { display:flex; }
+    #lightbox-img { max-width:94vw; max-height:82vh; border-radius:12px; box-shadow:var(--sh-lg); object-fit:contain; }
+    #lightbox-close {
+      position:absolute; top:calc(16px + env(safe-area-inset-top,0px)); right:16px;
+      width:44px; height:44px; border-radius:50%; background:rgba(255,255,255,.15);
+      border:none; color:white; font-size:24px; cursor:pointer;
+      display:flex; align-items:center; justify-content:center;
+    }
+    #lightbox-caption { color:rgba(255,255,255,.7); font-family:var(--font-d); font-size:14px; font-weight:600; letter-spacing:.5px; text-transform:uppercase; }
+
+    /* ── LEADERBOARD PANEL ── */
+    #leaderboard-panel {
+      display:none; position:fixed; inset:0; z-index:11000;
+      background:rgba(0,0,0,.6);
+      align-items:flex-end; justify-content:center;
+    }
+    #leaderboard-panel.open { display:flex; }
+
+    .lb-sheet {
+      background:white; width:100%; max-width:540px;
+      border-radius:24px 24px 0 0;
+      max-height:88vh; display:flex; flex-direction:column;
+      box-shadow:0 -8px 40px rgba(0,0,0,.3);
+      padding-bottom:env(safe-area-inset-bottom,0px);
+    }
+
+    .lb-handle { width:40px; height:4px; background:var(--gray-300); border-radius:2px; margin:12px auto 0; flex-shrink:0; }
+
+    .lb-header {
+      background:var(--cert-green); color:white;
+      padding:16px 20px 14px;
+      position:relative; flex-shrink:0;
+    }
+    .lb-header::after { content:''; position:absolute; bottom:0; left:0; right:0; height:3px; background:var(--cert-accent); }
+
+    .lb-header-top { display:flex; align-items:center; justify-content:space-between; margin-bottom:4px; }
+    .lb-title { font-family:var(--font-d); font-size:24px; font-weight:900; text-transform:uppercase; letter-spacing:.5px; }
+    .lb-subtitle { font-size:13px; opacity:.8; font-weight:500; }
+    .lb-close { background:rgba(255,255,255,.15); border:none; color:white; width:36px; height:36px; border-radius:50%; font-size:20px; cursor:pointer; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+
+    .lb-body { flex:1; overflow-y:auto; padding:16px 16px 20px; -webkit-overflow-scrolling:touch; }
+
+    /* Podium */
+    .lb-podium { display:flex; align-items:flex-end; justify-content:center; gap:8px; margin-bottom:24px; padding:0 8px; }
+    .lb-podium-slot { display:flex; flex-direction:column; align-items:center; gap:6px; flex:1; }
+    .lb-podium-avatar {
+      width:52px; height:52px; border-radius:50%;
+      display:flex; align-items:center; justify-content:center;
+      font-family:var(--font-d); font-size:22px; font-weight:900; color:white;
+      box-shadow:var(--sh-md); border:3px solid white; flex-shrink:0;
+    }
+    .lb-podium-name { font-family:var(--font-d); font-size:14px; font-weight:800; text-align:center; color:var(--gray-800); text-transform:uppercase; letter-spacing:.3px; line-height:1.2; }
+    .lb-podium-visits { font-size:12px; color:var(--gray-600); font-weight:600; text-align:center; }
+    .lb-podium-block { border-radius:10px 10px 0 0; width:100%; display:flex; align-items:center; justify-content:center; }
+    .lb-podium-rank { font-family:var(--font-d); font-size:28px; font-weight:900; color:white; opacity:.8; }
+
+    .rank-1-avatar { background:linear-gradient(135deg,#f59e0b,#d97706); }
+    .rank-2-avatar { background:linear-gradient(135deg,#94a3b8,#64748b); }
+    .rank-3-avatar { background:linear-gradient(135deg,#cd7f32,#a0522d); }
+    .rank-1-block  { background:linear-gradient(180deg,#fbbf24,#f59e0b); height:80px; }
+    .rank-2-block  { background:linear-gradient(180deg,#cbd5e1,#94a3b8); height:58px; }
+    .rank-3-block  { background:linear-gradient(180deg,#d4a06a,#cd7f32); height:44px; }
+
+    /* Rest of leaderboard list */
+    .lb-list { display:flex; flex-direction:column; gap:8px; }
+    .lb-row {
+      display:flex; align-items:center; gap:12px;
+      background:var(--gray-50); border:1px solid var(--gray-200);
+      border-radius:12px; padding:12px 14px;
+      animation:lb-slide-in .3s ease both;
+    }
+    @keyframes lb-slide-in { from{opacity:0;transform:translateY(10px)} to{opacity:1;transform:translateY(0)} }
+    .lb-rank-num { font-family:var(--font-d); font-size:18px; font-weight:800; color:var(--gray-400); width:28px; flex-shrink:0; text-align:center; }
+    .lb-name { flex:1; font-family:var(--font-d); font-size:17px; font-weight:800; color:var(--gray-800); text-transform:uppercase; letter-spacing:.3px; }
+    .lb-stats { text-align:right; }
+    .lb-stat-primary { font-family:var(--font-d); font-size:18px; font-weight:800; color:var(--cert-green); }
+    .lb-stat-secondary { font-size:11px; color:var(--gray-400); font-weight:600; }
+    .lb-empty { text-align:center; padding:40px 20px; color:var(--gray-400); font-family:var(--font-d); font-size:16px; font-weight:700; text-transform:uppercase; letter-spacing:.5px; }
+
+    .lb-section-label { font-family:var(--font-d); font-size:11px; font-weight:700; letter-spacing:1.5px; text-transform:uppercase; color:var(--gray-400); margin:16px 0 8px 4px; }
+
+    /* ── FORM MODAL ── */
+    #formModal { display:none; position:fixed; inset:0; z-index:10000; background:rgba(0,0,0,.55); }
+    #formModal.open { display:block; }
+    .modal-content { background:white; width:100%; height:100%; height:calc(var(--vh,1vh)*100); display:flex; flex-direction:column; }
+    .modal-header { background:var(--cert-green); color:white; padding:14px 18px; padding-top:calc(14px + env(safe-area-inset-top,0px)); display:flex; align-items:center; gap:12px; flex-shrink:0; position:relative; }
+    .modal-header::after { content:''; position:absolute; bottom:0; left:0; right:0; height:3px; background:var(--cert-accent); }
+    .modal-header h2 { flex:1; font-family:var(--font-d); font-size:18px; font-weight:800; text-transform:uppercase; letter-spacing:.5px; }
+    .modal-close { width:40px; height:40px; display:flex; align-items:center; justify-content:center; background:rgba(255,255,255,.15); border:none; border-radius:50%; color:white; font-size:22px; cursor:pointer; touch-action:manipulation; flex-shrink:0; }
+    .modal-close:active { background:rgba(255,255,255,.25); }
+    .modal-body { flex:1; overflow:hidden; padding-bottom:env(safe-area-inset-bottom,0px); }
+    .modal-body iframe { width:100%; height:100%; border:none; }
+
+    /* ── RESPONSIVE ── */
+    @media (min-width:769px) {
+      :root { --header-h:80px; }
+      #header h1 { font-size:24px; }
+      #header p  { font-size:13px; }
+      .lb-sheet { border-radius:20px; margin:auto; max-height:80vh; }
+      #leaderboard-panel { align-items:center; }
+      .modal-content { width:90%; max-width:680px; height:88vh; margin:6vh auto; border-radius:20px; }
+      .modal-header  { border-radius:20px 20px 0 0; }
+    }
+    @media (max-height:500px) and (orientation:landscape) {
+      :root { --header-h:60px; }
+      #header { padding:0 14px; }
+      #header-logo { height:36px; }
+      #header h1 { font-size:17px; }
+      #header p  { display:none; }
+      #lives-pill { display:none; }
+    }
+    @media (max-width:360px) {
+      #header h1 { font-size:17px; }
+      #lives-count { font-size:18px; }
+    }
+  </style>
+</head>
+<body>
+<div id="app">
+
+  <!-- HEADER -->
+  <div id="header">
+    <img id="header-logo"
+      src="https://drive.google.com/thumbnail?id=16Lg4zmmXXKSeqZXpguuJMuZVAh3Xu9dv&sz=w200"
+      alt="Frisco CERT Logo" onerror="this.style.display='none'">
+    <div id="header-text">
+      <h1>Frisco Outdoor Warning Siren Map</h1>
+      <p>Tap a siren to sign up as a volunteer listener</p>
+    </div>
+    <div id="lives-pill">
+      <span id="lives-label">Lives</span>
+      <span id="lives-count">—</span>
+      <span id="lives-sublabel">Protected</span>
+    </div>
+  </div>
+
+  <!-- MAP -->
+  <div id="map">
+    <div id="loading-screen">
+      <div class="spinner"></div>
+      <p>Loading Siren Data…</p>
+    </div>
+    <div id="error-screen">
+      <h2>⚠️ Could Not Load Data</h2>
+      <p id="error-msg">Unable to fetch siren data.</p>
+      <div id="error-detail"></div>
+      <button class="btn-primary" onclick="startLoad()">Try Again</button>
+    </div>
+    <div id="data-source-bar">
+      <div class="dot" id="freshness-dot"></div>
+      <span id="freshness-label">Loaded just now</span>
+    </div>
+
+  </div>
+</div>
+
+<!-- FAB CLUSTER - outside map for independent stacking context -->
+<div id="fab-cluster">
+  <button id="fab-legend"   class="fab"            onclick="toggleLegend()">🗺️ Legend</button>
+  <button id="fab-lb"       class="fab"            onclick="openLeaderboard()">🏆 Leaderboard</button>
+  <button id="fab-locate"   class="fab fab-locate" onclick="locateMe()">📍 Locate Me</button>
+</div>
+
+<!-- PHOTO LIGHTBOX -->
+<div id="lightbox" onclick="closeLightbox()">
+  <button id="lightbox-close" onclick="closeLightbox()">✕</button>
+  <img id="lightbox-img" src="" alt="Siren photo">
+  <div id="lightbox-caption"></div>
+</div>
+
+<!-- LEADERBOARD PANEL -->
+<div id="leaderboard-panel" onclick="closeLbIfBg(event)">
+  <div class="lb-sheet">
+    <div class="lb-handle"></div>
+    <div class="lb-header">
+      <div class="lb-header-top">
+        <span class="lb-title">🏆 Leaderboard</span>
+        <button class="lb-close" onclick="closeLeaderboard()">✕</button>
+      </div>
+      <div class="lb-subtitle">Frisco CERT Siren Volunteer Rankings — Year to Date</div>
+    </div>
+    <div class="lb-body" id="lb-body">
+      <div class="lb-empty">Loading rankings…</div>
+    </div>
+  </div>
+</div>
+
+<!-- VOLUNTEER FORM MODAL -->
+<div id="formModal">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h2 id="modal-title">Volunteer Sign-Up</h2>
+      <button class="modal-close" onclick="closeModal()" aria-label="Close">✕</button>
+    </div>
+    <div class="modal-body">
+      <iframe id="formIframe" src="" frameborder="0"></iframe>
+    </div>
+  </div>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+/* =====================================================
+   HARDCODED CONFIG
+   ===================================================== */
+const GOOGLE_FORM_URL  = 'https://docs.google.com/forms/d/e/1FAIpQLSeyQ8Gp6FpR8mIyrB6KFG-cmBw2BMQNoXgKpdSg9f4QnkW9Eg/viewform';
+const SHEET_ID         = '1ubqBVVwvNh4hQMifJypJxWDWg8-IixIQWsSpJy_-d5k';
+const SHEET_NAME       = 'Siren Locations';
+const LEADERBOARD_NAME = 'Leaderboard';
+const API_KEY          = 'AIzaSyDJ1xI_sR5oqC16HNJ8u6zzpQo9Deb1w5w';
+
+/* =====================================================
+   STATE
+   ===================================================== */
+let map           = null;
+let legendDiv     = null;
+let legendVisible = false;
+let activeCircles = {};
+let locationMarker = null;
+let locationCircle = null;
+let watchId        = null;
+
+/* =====================================================
+   FRISCO BOUNDARY
+   ===================================================== */
+const BOUNDARY = [
+  [33.13608,-96.92283],[33.1402,-96.9226],[33.14084,-96.92209],[33.14111,-96.9213],
+  [33.14102,-96.91412],[33.14678,-96.91406],[33.14675,-96.91181],[33.15463,-96.91185],
+  [33.1546,-96.89955],[33.14656,-96.89948],[33.14651,-96.89778],[33.15152,-96.89776],
+  [33.15145,-96.89077],[33.15863,-96.89068],[33.15894,-96.88658],[33.16319,-96.88654],
+  [33.16302,-96.88221],[33.16436,-96.88221],[33.16457,-96.88205],[33.17828,-96.88195],
+  [33.1784,-96.88734],[33.1899,-96.88702],[33.19162,-96.88644],[33.20144,-96.88086],
+  [33.20275,-96.88048],[33.20388,-96.88044],[33.20397,-96.88787],[33.20559,-96.88776],
+  [33.20577,-96.88718],[33.2062,-96.88664],[33.20704,-96.88663],[33.20716,-96.88676],
+  [33.20572,-96.88775],[33.21134,-96.8878],[33.21129,-96.89236],[33.21404,-96.89233],
+  [33.21514,-96.89097],[33.21592,-96.88956],[33.21655,-96.88876],[33.21917,-96.8872],
+  [33.21885,-96.88048],[33.21913,-96.88026],[33.21948,-96.8388],[33.21905,-96.80285],
+  [33.2189,-96.76761],[33.21863,-96.75029],[33.21191,-96.75031],[33.21191,-96.75128],
+  [33.21164,-96.75153],[33.21158,-96.75206],[33.21072,-96.75206],[33.21072,-96.75547],
+  [33.21854,-96.75539],[33.21859,-96.76741],[33.1965,-96.76751],[33.19641,-96.76238],
+  [33.19473,-96.76239],[33.18912,-96.76248],[33.18912,-96.76782],[33.18201,-96.7679],
+  [33.18187,-96.75798],[33.1819,-96.75748],[33.18226,-96.75747],[33.18219,-96.75009],
+  [33.18166,-96.75011],[33.18162,-96.74158],[33.1852,-96.74151],[33.18524,-96.73296],
+  [33.18896,-96.733],[33.18896,-96.73289],[33.17994,-96.73276],[33.16685,-96.73309],
+  [33.13837,-96.73338],[33.13309,-96.7331],[33.12697,-96.73345],[33.12624,-96.73332],
+  [33.1253,-96.7329],[33.11969,-96.74959],[33.11635,-96.75846],[33.09937,-96.80035],
+  [33.09593,-96.8086],[33.09483,-96.81026],[33.09402,-96.81208],[33.09223,-96.81797],
+  [33.08381,-96.84824],[33.08232,-96.8521],[33.08287,-96.85249],[33.08127,-96.85586],
+  [33.08965,-96.85689],[33.09119,-96.85702],[33.09222,-96.85693],[33.10366,-96.85454],
+  [33.10635,-96.85356],[33.10631,-96.86016],[33.10644,-96.86076],[33.10794,-96.86066],
+  [33.10822,-96.86085],[33.10825,-96.86923],[33.10548,-96.86925],[33.10549,-96.87183],
+  [33.10569,-96.87249],[33.10522,-96.87277],[33.10528,-96.88181],[33.1026,-96.88183],
+  [33.10264,-96.88351],[33.10212,-96.88367],[33.09909,-96.88219],[33.09896,-96.88367],
+  [33.10046,-96.88482],[33.10304,-96.88521],[33.10306,-96.88634],[33.10384,-96.88941],
+  [33.10525,-96.8888],[33.10586,-96.88899],[33.10722,-96.89154],[33.11646,-96.89152],
+  [33.1166,-96.89092],[33.11831,-96.88757],[33.1188,-96.88771],[33.11837,-96.88865],
+  [33.11864,-96.88949],[33.1183,-96.89014],[33.11822,-96.89151],[33.1201,-96.8915],
+  [33.12008,-96.89315],[33.12098,-96.89313],[33.1227,-96.89215],[33.123,-96.89282],
+  [33.12257,-96.89365],[33.12155,-96.89449],[33.12174,-96.89465],[33.12008,-96.89535],
+  [33.12011,-96.90142],[33.12048,-96.9014],[33.12018,-96.90266],[33.12024,-96.90511],
+  [33.12254,-96.9051],[33.12317,-96.90587],[33.12437,-96.90586],[33.12359,-96.90509],
+  [33.12452,-96.90509],[33.12373,-96.90475],[33.12413,-96.90464],[33.12378,-96.90396],
+  [33.12436,-96.9044],[33.12581,-96.90491],[33.12604,-96.90438],[33.12539,-96.90356],
+  [33.1261,-96.90342],[33.12628,-96.90306],[33.12606,-96.90264],[33.12504,-96.90218],
+  [33.12443,-96.90228],[33.12446,-96.9019],[33.12515,-96.90165],[33.12539,-96.90131],
+  [33.12523,-96.90079],[33.12613,-96.90126],[33.12688,-96.90107],[33.12728,-96.90079],
+  [33.12746,-96.90019],[33.12738,-96.89996],[33.12701,-96.89948],[33.12659,-96.89932],
+  [33.12698,-96.89913],[33.12695,-96.89885],[33.12756,-96.89856],[33.12844,-96.89904],
+  [33.12874,-96.89882],[33.12883,-96.89903],[33.12903,-96.89829],[33.12967,-96.89828],
+  [33.12965,-96.89778],[33.1299,-96.89761],[33.12997,-96.89671],[33.13108,-96.89557],
+  [33.13145,-96.89493],[33.13193,-96.895],[33.13226,-96.89436],[33.13291,-96.8944],
+  [33.13296,-96.89472],[33.13242,-96.89521],[33.13292,-96.89552],[33.13256,-96.89566],
+  [33.13215,-96.89559],[33.13224,-96.89679],[33.13201,-96.89704],[33.13163,-96.8986],
+  [33.13113,-96.89917],[33.13111,-96.8999],[33.13016,-96.90061],[33.12988,-96.90064],
+  [33.12903,-96.9027],[33.12866,-96.90507],[33.1294,-96.9091],[33.13152,-96.90636],
+  [33.13126,-96.90993],[33.13077,-96.91088],[33.13629,-96.91152],[33.13381,-96.91214],
+  [33.13381,-96.91176],[33.13216,-96.91238],[33.13086,-96.91635],[33.13284,-96.91748],
+  [33.13041,-96.919],[33.13067,-96.92007],[33.12936,-96.92065],[33.13386,-96.92076],
+  [33.13379,-96.92281],[33.13608,-96.92283]
+];
+
+/* =====================================================
+   VIEWPORT HEIGHT FIX
+   ===================================================== */
+function setVh(){ document.documentElement.style.setProperty('--vh',(window.innerHeight*.01)+'px'); }
+setVh();
+window.addEventListener('resize', setVh);
+window.addEventListener('orientationchange',()=>setTimeout(setVh,200));
+
+/* =====================================================
+   BOOT
+   ===================================================== */
+window.addEventListener('DOMContentLoaded', startLoad);
+
+/* =====================================================
+   DATA LOADING
+   ===================================================== */
+function apiUrl(sheet){
+  return `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/${encodeURIComponent(sheet)}?key=${API_KEY}`;
+}
+
+function startLoad(){
+  hideError();
+  showLoadingScreen();
+  fetch(apiUrl(SHEET_NAME))
+    .then(r=>{ if(!r.ok) return r.json().then(e=>{throw new Error(e.error?.message||('HTTP '+r.status));}); return r.json(); })
+    .then(d=>{ const rows=d.values||[]; if(rows.length<2) throw new Error('No data rows found.'); initMap(rowsToSirens(rows)); })
+    .catch(err=>showError(err.message));
+}
+
+/* =====================================================
+   COLUMN MAP
+    0  Number               8  Sign Up Needed?
+    1  Friendly Name        9  Days Since Last Sign Up
+    2  System Name         10  Last Sign Up Date
+    3  Latitude            11  Days Since Last Visit
+    4  Longitude           12  Date of Last Visit
+    5  Status              13  Description
+    6  Last Tested         14  Instructions
+    7  Next Scheduled Test 15  Population
+                           16  Image of Siren (Drive URL)
+   ===================================================== */
+function rowsToSirens(rows){
+  return rows.slice(1).filter(r=>r[0]).map(r=>({
+    id:             r[0],
+    friendlyName:   r[1]  ||'TBD',
+    systemName:     r[2]  ||'TBD',
+    lat:            parseFloat(r[3]),
+    lng:            parseFloat(r[4]),
+    status:         r[5]  ||'Unknown',
+    lastTested:     r[6]  ||'N/A',
+    nextTest:       r[7]  ||'N/A',
+    signUpNeeded:   r[8]  ||'Yes',
+    daysSinceSignup:parseFloat(r[9]) ||0,
+    lastSignUpDate: r[10] ||'N/A',
+    daysSinceVisit: parseFloat(r[11])||0,
+    lastVisitDate:  r[12] ||'N/A',
+    description:    r[13] ||'',
+    instructions:   r[14] ||'',
+    population:     parseInt(String(r[15]||'0').replace(/,/g,''))||0,
+    imageUrl:       r[16] ||'',
+  }));
+}
+
+/* =====================================================
+   DRIVE URL → EMBEDDABLE IMG SRC
+   Handles: /file/d/ID/view  and  /open?id=ID  formats
+   ===================================================== */
+function driveImgSrc(url, size){
+  if(!url) return '';
+  size = size||'w400';
+  let id = '';
+  const m1 = url.match(/\/file\/d\/([^\/\?&]+)/);
+  const m2 = url.match(/[?&]id=([^&]+)/);
+  if(m1) id = m1[1];
+  else if(m2) id = m2[1];
+  if(!id) return '';
+  return `https://drive.google.com/thumbnail?id=${id}&sz=${size}`;
+}
+
+/* =====================================================
+   URGENCY
+   ===================================================== */
+function urgencyDays(s){
+  const a=isNaN(s.daysSinceSignup)?9999:s.daysSinceSignup;
+  const b=isNaN(s.daysSinceVisit) ?9999:s.daysSinceVisit;
+  return Math.min(a,b);
+}
+function sirenColor(s){
+  if((s.signUpNeeded||'').toLowerCase()!=='yes') return '#6b7280';
+  const d=urgencyDays(s);
+  if(d<=7)  return '#10b981';
+  if(d<=14) return '#f59e0b';
+  if(d<=21) return '#f97316';
+  return '#dc2626';
+}
+function urgencyLabel(s){
+  if((s.signUpNeeded||'').toLowerCase()!=='yes') return null;
+  const d=urgencyDays(s);
+  if(d<=7)  return{text:'Recent Activity ✓',      bg:'#d1fae5',color:'#065f46'};
+  if(d<=14) return{text:'Needs Attention',          bg:'#fef3c7',color:'#92400e'};
+  if(d<=21) return{text:'Action Required!',         bg:'#ffedd5',color:'#9a3412'};
+  return          {text:'URGENT — No Recent Activity',bg:'#fee2e2',color:'#991b1b'};
+}
+
+/* =====================================================
+   LIVES PROTECTED COUNTER
+   ===================================================== */
+function calcLivesProtected(sirens){
+  return sirens.filter(s=>s.daysSinceVisit<=21).reduce((sum,s)=>sum+s.population,0);
+}
+
+function animateCount(el, target, duration){
+  const start = performance.now();
+  const startVal = 0;
+  function step(now){
+    const p = Math.min((now-start)/duration,1);
+    const ease = 1-Math.pow(1-p,3); // ease-out cubic
+    el.textContent = Math.floor(startVal + (target-startVal)*ease).toLocaleString();
+    if(p<1) requestAnimationFrame(step);
+    else el.textContent = target.toLocaleString();
+  }
+  requestAnimationFrame(step);
+}
+
+/* =====================================================
+   MAP INIT
+   ===================================================== */
+function initMap(sirens){
+  hideLoadingScreen();
+  document.getElementById('data-source-bar').style.display='flex';
+  startFreshnessTimer();
+
+  // Lives Protected
+  const lives = calcLivesProtected(sirens);
+  const livesEl = document.getElementById('lives-count');
+  setTimeout(()=>animateCount(livesEl, lives, 1800), 400);
+
+  if(map){ map.remove(); map=null; }
+
+  map = L.map('map',{
+    zoomControl:false, touchZoom:true, scrollWheelZoom:false,
+    doubleClickZoom:true, boxZoom:false, dragging:true, tap:true, tapTolerance:25
+  }).setView([33.1507,-96.8236],12);
+
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
+    attribution:'© <a href="https://openstreetmap.org">OpenStreetMap</a>', maxZoom:18
+  }).addTo(map);
+
+  const boundary = L.polygon(BOUNDARY,{
+    color:'#1e3a8a', weight:2.5, fillColor:'#3b82f6', fillOpacity:.07
+  }).addTo(map);
+
+  map.fitBounds(boundary.getBounds(),{padding:[30,30]});
+  L.control.zoom({position:'bottomleft'}).addTo(map);
+
+  // Force popup pane above FAB buttons (which sit at z-index 650)
+  // Must be done after map init so Leaflet doesn't overwrite it
+  const popupPane = map.getPane('popupPane');
+  if(popupPane) popupPane.style.zIndex = '2000';
+
+  sirens.forEach(addMarker);
+  addLegend();
+
+  setTimeout(()=>{ if(map) map.invalidateSize(); },80);
+  setTimeout(()=>{ if(map) map.invalidateSize(); },300);
+}
+
+/* =====================================================
+   MARKERS
+   ===================================================== */
+function addMarker(siren){
+  const color   = sirenColor(siren);
+  const sLow    = (siren.status||'').toLowerCase();
+  const needsSU = (siren.signUpNeeded||'').toLowerCase()==='yes';
+  const isUrgent= needsSU && urgencyDays(siren)>21;
+
+  let cls='siren-marker';
+  if(sLow==='canceled')       cls+=' status-canceled';
+  if(sLow==='not scheduled')  cls+=' status-notscheduled';
+  if(isUrgent)                cls+=' urgent';
+
+  const icon = L.divIcon({
+    className:'custom-siren-icon',
+    html:`<div class="${cls}" style="background-color:${color};">${siren.id}</div>`,
+    iconSize:[32,32], iconAnchor:[16,16], popupAnchor:[0,-18]
+  });
+
+  const marker = L.marker([siren.lat,siren.lng],{icon}).addTo(map);
+  marker.bindPopup(buildPopup(siren,color),{
+    maxWidth:400, autoPan:true, autoPanPadding:[40,40], closeButton:false
+  });
+
+  marker.on('click',()=>{
+    clearCircle(siren.id);
+    const circle = L.circle([siren.lat,siren.lng],{
+      radius:1609.34, color, fillColor:color, fillOpacity:.07,
+      weight:2, dashArray:'8 8', opacity:.7
+    }).addTo(map);
+    const label = L.marker([siren.lat,siren.lng],{
+      icon:L.divIcon({
+        className:'',
+        html:`<div style="background:rgba(255,255,255,.95);padding:6px 12px;border-radius:8px;font-family:'Barlow Condensed',sans-serif;font-size:13px;font-weight:700;color:#4b5563;letter-spacing:.5px;text-transform:uppercase;white-space:nowrap;box-shadow:0 3px 8px rgba(0,0,0,.2);">~ 1 Mile Audible Range</div>`,
+        iconSize:[160,28], iconAnchor:[80,-18]
+      }), interactive:false
+    }).addTo(map);
+    activeCircles[siren.id]={circle,label};
+  });
+
+  marker.on('popupclose',()=>clearCircle(siren.id));
+}
+
+function clearCircle(id){
+  if(activeCircles[id]){
+    map.removeLayer(activeCircles[id].circle);
+    map.removeLayer(activeCircles[id].label);
+    delete activeCircles[id];
+  }
+}
+
+/* =====================================================
+   POPUP
+   ===================================================== */
+function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+function buildPopup(siren, color){
+  const sLow   = (siren.status||'').toLowerCase();
+  const needsSU= (siren.signUpNeeded||'').toLowerCase()==='yes';
+  const ul     = urgencyLabel(siren);
+  const mapsUrl= `https://www.google.com/maps?q=${siren.lat},${siren.lng}`;
+  const imgSrc = driveImgSrc(siren.imageUrl,'w400');
+  const imgSrcFull = driveImgSrc(siren.imageUrl,'w1200');
+
+  let badgeCls='badge-online';
+  if(sLow==='canceled')      badgeCls='badge-canceled';
+  if(sLow==='not scheduled') badgeCls='badge-notscheduled';
+
+  // Photo column HTML
+  const photoHtml = imgSrc
+    ? `<div class="popup-photo-col">
+         <img class="popup-photo-thumb"
+              src="${imgSrc}"
+              alt="Siren ${esc(siren.id)}"
+              onclick="openLightbox('${imgSrcFull}','Siren #${esc(siren.id)}: ${esc(siren.friendlyName)}')"
+              onerror="this.parentElement.innerHTML='<div class=\\'popup-photo-placeholder\\'><span>📷</span>No Photo</div>'">
+         <div class="popup-photo-hint">Tap to enlarge</div>
+       </div>`
+    : `<div class="popup-photo-col">
+         <div class="popup-photo-placeholder"><span>📷</span>No Photo</div>
+       </div>`;
+
+  let h=`
+  <div>
+    <div class="popup-header">
+      <div class="popup-siren-id">Siren #${esc(siren.id)}</div>
+      <div class="popup-title">${esc(siren.friendlyName)}</div>
+    </div>
+    <div class="popup-body">
+      <div class="popup-inner">
+        <div class="popup-info">
+          <div class="popup-row"><span class="popup-label">System</span><span class="popup-value">${esc(siren.systemName)}</span></div>
+          <div class="popup-row"><span class="popup-label">Status</span><span class="popup-value"><span class="popup-badge ${badgeCls}">${esc(siren.status)}</span></span></div>
+          <div class="popup-row"><span class="popup-label">Last Tested</span><span class="popup-value">${esc(siren.lastTested)}</span></div>
+          <div class="popup-row"><span class="popup-label">Next Test</span><span class="popup-value">${esc(siren.nextTest)}</span></div>
+          <div class="popup-row"><span class="popup-label">Coordinates</span><span class="popup-value">${Number(siren.lat).toFixed(5)}, ${Number(siren.lng).toFixed(5)}</span></div>
+        </div>
+        ${photoHtml}
+      </div>
+      <hr class="popup-divider">`;
+
+  if(needsSU && ul){
+    h+=`<div class="popup-section-title">Volunteer Status</div>
+        <div class="volunteer-urgency" style="background:${ul.bg};color:${ul.color};">
+          <div class="urgency-dot" style="background:${ul.color};"></div>
+          <span>${ul.text}</span>
+        </div>
+        <div class="popup-row"><span class="popup-label">Sign-up</span><span class="popup-value">${siren.daysSinceSignup} days ago &nbsp;(${esc(siren.lastSignUpDate)})</span></div>
+        <div class="popup-row"><span class="popup-label">Last Visit</span><span class="popup-value">${siren.daysSinceVisit} days ago &nbsp;(${esc(siren.lastVisitDate)})</span></div>`;
+  } else {
+    h+=`<div class="assigned-chip">✅ <span>Volunteer already assigned for next test</span></div>
+        <div class="popup-row"><span class="popup-label">Last Visit</span><span class="popup-value">${siren.daysSinceVisit} days ago &nbsp;(${esc(siren.lastVisitDate)})</span></div>`;
+  }
+
+  if(siren.description && siren.description!=='N/A'){
+    h+=`<hr class="popup-divider"><div class="info-box"><div class="info-box-label">📍 Location Notes</div>${esc(siren.description)}</div>`;
+  }
+  if(siren.instructions && siren.instructions!=='N/A'){
+    h+=`<div class="info-box"><div class="info-box-label">🚗 Parking / Access</div>${esc(siren.instructions)}</div>`;
+  }
+
+  h+=`</div><div class="popup-footer"><a href="${mapsUrl}" target="_blank" class="popup-btn popup-btn-maps">📍 Open in Google Maps</a>`;
+
+  if(needsSU){
+    const sn=esc(siren.friendlyName).replace(/'/g,"\\'");
+    h+=`<button class="popup-btn popup-btn-green" onclick="openForm(${siren.id},'${sn}')">🙋 Volunteer for This Siren</button>`;
+  }
+
+  h+=`</div></div>`;
+  return h;
+}
+
+/* =====================================================
+   PHOTO LIGHTBOX
+   ===================================================== */
+function openLightbox(src, caption){
+  document.getElementById('lightbox-img').src = src;
+  document.getElementById('lightbox-caption').textContent = caption;
+  document.getElementById('lightbox').classList.add('open');
+  document.body.style.overflow='hidden';
+}
+function closeLightbox(){
+  document.getElementById('lightbox').classList.remove('open');
+  document.getElementById('lightbox-img').src='';
+  document.body.style.overflow='';
+}
+
+/* =====================================================
+   LOCATE ME
+   ===================================================== */
+function locateMe(){
+  const btn = document.getElementById('fab-locate');
+
+  // file:// protocol blocks geolocation silently in most browsers
+  if(location.protocol === 'file:'){
+    alert('📍 Location unavailable\n\nBrowsers block location access when opening HTML files directly from your computer.\n\nTo use Locate Me, open this file via a shared link (e.g. Google Drive → Open in browser) instead of double-clicking it locally.');
+    return;
+  }
+
+  if(!navigator.geolocation){
+    alert('Geolocation is not supported by your browser.');
+    return;
+  }
+
+  // Toggle off if already located
+  if(watchId !== null){
+    navigator.geolocation.clearWatch(watchId);
+    watchId = null;
+    if(locationMarker){ map.removeLayer(locationMarker); locationMarker=null; }
+    if(locationCircle){ map.removeLayer(locationCircle); locationCircle=null; }
+    btn.classList.remove('locating','located');
+    btn.textContent='📍 Locate Me';
+    return;
+  }
+
+  btn.classList.add('locating');
+  btn.textContent='⏳ Locating…';
+
+  watchId = navigator.geolocation.watchPosition(
+    pos=>{
+      const lat=pos.coords.latitude, lng=pos.coords.longitude, acc=pos.coords.accuracy;
+      btn.classList.remove('locating');
+      btn.classList.add('located');
+      btn.textContent='✓ Located';
+
+      const userIcon = L.divIcon({
+        className:'',
+        html:'<div class="user-location-dot"></div>',
+        iconSize:[20,20], iconAnchor:[10,10]
+      });
+
+      if(!locationMarker){
+        locationMarker = L.marker([lat,lng],{icon:userIcon,zIndexOffset:1000}).addTo(map);
+        locationCircle = L.circle([lat,lng],{radius:acc,color:'#4285f4',fillColor:'#4285f4',fillOpacity:.08,weight:1,opacity:.5}).addTo(map);
+        map.setView([lat,lng],15);
+      } else {
+        locationMarker.setLatLng([lat,lng]);
+        locationCircle.setLatLng([lat,lng]);
+        locationCircle.setRadius(acc);
+      }
+    },
+    err=>{
+      btn.classList.remove('locating');
+      btn.textContent='📍 Locate Me';
+      watchId=null;
+      if(err.code===1) alert('📍 Location permission denied\n\nTo fix this:\n1. Click the lock/info icon in your browser address bar\n2. Set Location to "Allow"\n3. Reload the page and try again');
+      else alert('Could not get your location. Please try again.');
+    },
+    {enableHighAccuracy:true, timeout:15000, maximumAge:5000}
+  );
+}
+
+/* =====================================================
+   LEGEND
+   ===================================================== */
+function addLegend(){
+  const ctrl = L.control({position:'bottomright'});
+  ctrl.onAdd=()=>{
+    const div=L.DomUtil.create('div','legend-ctrl hidden');
+    div.innerHTML=`
+      <div class="legend-header">
+        <div class="legend-title">Volunteer Status</div>
+        <button class="legend-close" onclick="toggleLegend()" aria-label="Close legend">✕</button>
+      </div>
+      <div class="legend-row"><div class="legend-dot" style="background:#6b7280;"></div><span>Assigned ✓</span></div>
+      <div class="legend-row"><div class="legend-dot" style="background:#10b981;"></div><span>1–7 days (Active)</span></div>
+      <div class="legend-row"><div class="legend-dot" style="background:#f59e0b;"></div><span>8–14 days (Attention needed)</span></div>
+      <div class="legend-row"><div class="legend-dot" style="background:#f97316;"></div><span>15–21 days (Action required)</span></div>
+      <div class="legend-row"><div class="legend-dot" style="background:#dc2626;"></div><span>22+ days (Urgent)</span></div>
+      <hr class="legend-sep">
+      <div class="legend-row"><div class="legend-boundary"></div><span>City Boundary</span></div>
+      <div style="margin-top:10px;font-size:11px;color:#9ca3af;font-style:italic;">Color = most recent of sign-up or visit</div>`;
+    L.DomEvent.disableClickPropagation(div);
+    L.DomEvent.disableScrollPropagation(div);
+    legendDiv=div;
+    return div;
+  };
+  ctrl.addTo(map);
+}
+
+function toggleLegend(){
+  if(!legendDiv) return;
+  legendVisible=!legendVisible;
+  legendDiv.classList.toggle('hidden',!legendVisible);
+}
+
+/* =====================================================
+   LEADERBOARD
+   ===================================================== */
+const RANK_COLORS = ['#f59e0b','#94a3b8','#cd7f32','#10b981','#6366f1','#ec4899','#0ea5e9','#84cc16','#f97316','#8b5cf6'];
+
+function openLeaderboard(){
+  document.getElementById('leaderboard-panel').classList.add('open');
+  document.getElementById('lb-body').innerHTML='<div class="lb-empty">Loading rankings…</div>';
+
+  fetch(apiUrl(LEADERBOARD_NAME))
+    .then(r=>{ if(!r.ok) return r.json().then(e=>{throw new Error(e.error?.message||'Error');}); return r.json(); })
+    .then(d=>{
+      const rows=(d.values||[]).slice(1).filter(r=>r[0]);
+      renderLeaderboard(rows);
+    })
+    .catch(err=>{
+      document.getElementById('lb-body').innerHTML=`<div class="lb-empty">⚠️ Could not load rankings.<br><small>${err.message}</small></div>`;
+    });
+}
+
+function renderLeaderboard(rows){
+  if(!rows.length){
+    document.getElementById('lb-body').innerHTML='<div class="lb-empty">No rankings yet.<br>Get out there and volunteer! 🚨</div>';
+    return;
+  }
+
+  // Sort by Total Sites Visited desc (col 1)
+  rows.sort((a,b)=>(parseInt(b[1])||0)-(parseInt(a[1])||0));
+
+  const top3  = rows.slice(0,3);
+  const rest  = rows.slice(3);
+
+  // Podium order: 2nd, 1st, 3rd
+  const podiumOrder = [top3[1], top3[0], top3[2]].filter(Boolean);
+  const podiumClass = top3[1] ? ['rank-2','rank-1','rank-3'] : ['rank-1'];
+  const podiumBlockH= top3[1] ? ['rank-2-block','rank-1-block','rank-3-block'] : ['rank-1-block'];
+
+  let podiumHtml='<div class="lb-podium">';
+  podiumOrder.forEach((r,i)=>{
+    if(!r) return;
+    const origRank = rows.indexOf(r)+1;
+    const initials = (r[0]||'?').split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2);
+    const color = RANK_COLORS[origRank-1]||'#6b7280';
+    const visits = r[1]||'0';
+    const unique = r[2]||'0';
+    podiumHtml+=`
+      <div class="lb-podium-slot">
+        <div class="lb-podium-avatar ${podiumClass[i]}-avatar" style="background:${color};">${initials}</div>
+        <div class="lb-podium-name">${esc(r[0])}</div>
+        <div class="lb-podium-visits">${visits} visits · ${unique} sites</div>
+        <div class="lb-podium-block ${podiumBlockH[i]}">
+          <div class="lb-podium-rank">${origRank === 1 ? '🥇' : origRank===2 ? '🥈' : '🥉'}</div>
+        </div>
+      </div>`;
+  });
+  podiumHtml+='</div>';
+
+  let listHtml='';
+  if(rest.length){
+    listHtml+='<div class="lb-section-label">Other Rankings</div><div class="lb-list">';
+    rest.forEach((r,i)=>{
+      const rank=i+4;
+      const color=RANK_COLORS[rank-1]||'#6b7280';
+      const initials=(r[0]||'?').split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2);
+      const delay=(i*60)+'ms';
+      listHtml+=`
+        <div class="lb-row" style="animation-delay:${delay};">
+          <div class="lb-rank-num">${rank}</div>
+          <div class="lb-podium-avatar" style="background:${color};width:36px;height:36px;font-size:14px;border-width:2px;flex-shrink:0;">${initials}</div>
+          <div class="lb-name">${esc(r[0])}</div>
+          <div class="lb-stats">
+            <div class="lb-stat-primary">${r[1]||0}</div>
+            <div class="lb-stat-secondary">${r[2]||0} unique sites</div>
+          </div>
+        </div>`;
+    });
+    listHtml+='</div>';
+  }
+
+  document.getElementById('lb-body').innerHTML = podiumHtml + listHtml;
+}
+
+function closeLeaderboard(){ document.getElementById('leaderboard-panel').classList.remove('open'); }
+function closeLbIfBg(e){ if(e.target===document.getElementById('leaderboard-panel')) closeLeaderboard(); }
+
+/* =====================================================
+   FORM MODAL
+   ===================================================== */
+function openForm(id,name){
+  document.getElementById('modal-title').textContent=`Volunteer — Siren #${id}: ${name}`;
+  document.getElementById('formIframe').src=GOOGLE_FORM_URL+'?embedded=true';
+  document.getElementById('formModal').classList.add('open');
+  document.body.style.overflow='hidden';
+}
+function closeModal(){
+  document.getElementById('formModal').classList.remove('open');
+  document.getElementById('formIframe').src='';
+  document.body.style.overflow='';
+}
+window.addEventListener('click',e=>{ if(e.target===document.getElementById('formModal')) closeModal(); });
+
+/* =====================================================
+   UI HELPERS
+   ===================================================== */
+function showLoadingScreen(){ document.getElementById('loading-screen').classList.remove('hidden'); }
+function hideLoadingScreen(){ document.getElementById('loading-screen').classList.add('hidden'); }
+function showError(msg){
+  hideLoadingScreen();
+  document.getElementById('error-msg').textContent=msg;
+  document.getElementById('error-detail').textContent='Make sure your device has internet access and try again. If the problem persists, contact your CERT coordinator.';
+  document.getElementById('error-screen').classList.add('visible');
+}
+function hideError(){ document.getElementById('error-screen').classList.remove('visible'); }
+
+/* =====================================================
+   FRESHNESS TIMER
+   ===================================================== */
+let freshnessInterval = null;
+
+function startFreshnessTimer(){
+  if(freshnessInterval) clearInterval(freshnessInterval);
+  const loadedAt = Date.now();
+  const dot   = document.getElementById('freshness-dot');
+  const label = document.getElementById('freshness-label');
+
+  function tick(){
+    const elapsed = Math.floor((Date.now() - loadedAt) / 1000);
+    const mins = Math.floor(elapsed / 60);
+    const secs = elapsed % 60;
+
+    if(elapsed < 60){
+      label.textContent = `Loaded ${secs}s ago`;
+    } else {
+      label.textContent = `Last updated ${mins}m ${secs}s ago`;
+    }
+
+    // Dot color: green < 5min, yellow 5-10min, red 10min+
+    if(elapsed < 300){
+      dot.style.background = '#10b981'; // green
+    } else if(elapsed < 600){
+      dot.style.background = '#f59e0b'; // yellow
+    } else {
+      dot.style.background = '#dc2626'; // red
+    }
+  }
+
+  tick();
+  freshnessInterval = setInterval(tick, 1000);
+}
+</script>
+</body>
+</html>
