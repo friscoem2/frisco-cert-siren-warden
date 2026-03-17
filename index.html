@@ -6,6 +6,7 @@
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <title>Frisco Tornado Siren Volunteer Map</title>
+  <link rel="icon" type="image/png" href="https://drive.google.com/thumbnail?id=16Lg4zmmXXKSeqZXpguuJMuZVAh3Xu9dv&sz=w64">
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700;800;900&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet">
@@ -146,7 +147,7 @@
     .login-input:focus { border-color:var(--cert-green); background:white; }
     .login-input.shake { animation:loginshake .4s ease; border-color:#dc2626; }
     @keyframes loginshake { 0%,100%{transform:translateX(0)} 20%{transform:translateX(-8px)} 40%{transform:translateX(8px)} 60%{transform:translateX(-6px)} 80%{transform:translateX(6px)} }
-    .login-eye { position:absolute; right:14px; top:50%; transform:translateY(-50%); background:none; border:none; cursor:pointer; padding:4px; color:var(--gray-400); font-size:18px; line-height:1; touch-action:manipulation; }
+    .login-eye { position:absolute; right:10px; top:50%; transform:translateY(-50%); background:var(--gray-100); border:1px solid var(--gray-200); border-radius:6px; cursor:pointer; padding:4px 8px; color:var(--gray-600); font-family:var(--font-d); font-size:11px; font-weight:700; letter-spacing:.5px; text-transform:uppercase; line-height:1; touch-action:manipulation; }
     .login-btn { width:100%; padding:16px; background:var(--cert-green); color:white; border:none; border-radius:12px; font-family:var(--font-d); font-size:18px; font-weight:800; letter-spacing:.8px; text-transform:uppercase; cursor:pointer; touch-action:manipulation; box-shadow:0 4px 14px rgba(30,82,56,.35); transition:background .15s; margin-top:4px; }
     .login-btn:active { transform:scale(.97); background:var(--cert-dark); }
     .login-btn:disabled { background:var(--gray-300); box-shadow:none; cursor:not-allowed; }
@@ -224,6 +225,55 @@
     .legend-boundary { width:14px; height:8px; border-radius:2px; background:rgba(59,130,246,.15); border:2px solid #1e3a8a; flex-shrink:0; }
     .legend-ctrl.hidden { display:none; }
 
+    /* ── FILTER BUTTON + PANEL ── */
+    #filter-btn {
+      background:white; border:2px solid rgba(0,0,0,.1);
+      border-radius:8px; width:34px; height:34px;
+      display:flex; align-items:center; justify-content:center;
+      cursor:pointer; box-shadow:var(--sh-sm);
+      touch-action:manipulation;
+      padding:0; line-height:1;
+      transition:background .15s;
+    }
+    #filter-btn:active { background:var(--gray-100); }
+    #filter-btn svg { width:16px; height:16px; display:block; }
+    /* Active state — accent border when any filter is deselected from default */
+    #filter-btn.filtered { border-color:var(--cert-accent); background:#fffbeb; }
+
+    #filter-panel {
+      position:absolute;
+      /* sits just above the zoom control — Leaflet zoom is at bottom-left ~80px from bottom */
+      bottom:116px; left:10px;
+      z-index:700;
+      background:white; border-radius:14px;
+      box-shadow:var(--sh-lg); border:1px solid var(--gray-200);
+      padding:12px 14px 14px;
+      width:200px;
+      display:none;
+      transform-origin:bottom left;
+      animation:filterIn .16s ease;
+    }
+    #filter-panel.open { display:block; }
+    @keyframes filterIn { from{opacity:0;transform:scale(.92)} to{opacity:1;transform:scale(1)} }
+
+    .fp-title { font-family:var(--font-d); font-size:11px; font-weight:800; letter-spacing:1.2px; text-transform:uppercase; color:var(--cert-green); margin-bottom:10px; padding-bottom:7px; border-bottom:2px solid var(--cert-accent); display:flex; align-items:center; justify-content:space-between; }
+    .fp-title button { background:none; border:none; font-family:var(--font-d); font-size:10px; font-weight:700; letter-spacing:.5px; text-transform:uppercase; color:var(--gray-400); cursor:pointer; padding:0; touch-action:manipulation; }
+    .fp-title button:active { color:var(--cert-green); }
+
+    .fp-row { display:flex; align-items:center; gap:9px; padding:5px 0; cursor:pointer; touch-action:manipulation; }
+    .fp-row input[type="checkbox"] { display:none; }
+    .fp-check {
+      width:18px; height:18px; border-radius:5px; flex-shrink:0;
+      border:2px solid var(--gray-300); background:white;
+      display:flex; align-items:center; justify-content:center;
+      transition:background .12s, border-color .12s;
+      font-size:11px; color:white; font-weight:900;
+    }
+    .fp-row.checked .fp-check { background:var(--cert-green); border-color:var(--cert-green); }
+    .fp-row.checked .fp-check::after { content:'✓'; }
+    .fp-dot { width:11px; height:11px; border-radius:50%; flex-shrink:0; border:1.5px solid rgba(0,0,0,.1); }
+    .fp-label { font-family:var(--font-d); font-size:13px; font-weight:700; color:var(--gray-700); letter-spacing:.2px; }
+
     /* ── SIREN MARKERS ── */
     .siren-marker {
       width:32px; height:32px; border-radius:50%;
@@ -251,13 +301,15 @@
 
     /* ── POPUP ── */
     .leaflet-popup-content-wrapper { border-radius:16px; box-shadow:var(--sh-lg); padding:0; overflow:hidden; border:none; max-height:62vh; display:flex; flex-direction:column; }
-    .leaflet-popup-content { margin:0; width:min(300px,80vw) !important; font-family:var(--font-b); flex:1; overflow-y:auto; -webkit-overflow-scrolling:touch; display:flex; flex-direction:column; }
+    .leaflet-popup-content { margin:0; width:min(300px,80vw) !important; font-family:var(--font-b); flex:1; overflow:hidden; display:flex; flex-direction:column; min-height:0; }
     .leaflet-popup-tip-container { display:none; }
-    .popup-header { background:var(--cert-green); color:white; padding:9px 12px 8px; position:relative; flex-shrink:0; }
+    /* Sticky popup header — never scrolls */
+    .popup-header { background:var(--cert-green); color:white; padding:9px 12px 8px; position:relative; flex-shrink:0; z-index:1; }
     .popup-header::after { content:''; position:absolute; bottom:0; left:0; right:0; height:3px; background:var(--cert-accent); }
     .popup-siren-id { font-family:var(--font-d); font-size:10px; font-weight:700; letter-spacing:1.5px; text-transform:uppercase; opacity:.75; margin-bottom:2px; }
     .popup-title    { font-family:var(--font-d); font-size:14px; font-weight:800; line-height:1.2; text-transform:uppercase; }
-    .popup-body { padding:8px 11px; overflow-y:auto; -webkit-overflow-scrolling:touch; flex:1; }
+    /* Scrollable body — header stays put */
+    .popup-body { padding:8px 11px; overflow-y:auto; -webkit-overflow-scrolling:touch; flex:1; min-height:0; }
     .popup-inner { display:flex; gap:12px; }
     .popup-info  { flex:1; min-width:0; }
     .popup-photo-col { flex-shrink:0; width:64px; display:flex; flex-direction:column; gap:4px; }
@@ -345,23 +397,25 @@
 
     /* Day cards — horizontal scroll on mobile */
     .wx-days-wrap {
-      padding:12px 12px 16px;
+      padding:16px 12px 12px; /* extra top padding for the badge overhang */
     }
     .wx-days {
       display:flex; gap:8px;
     }
-    /* 3-day: all fit on screen; 5/7-day: scroll horizontally */
+    /* 3-day: all fit on screen; 5/7-day: scroll horizontally on the WRAP not inner div */
     .wx-days-wrap.days-3 .wx-days { flex-wrap:nowrap; }
-    .wx-days-wrap.days-5 .wx-days,
-    .wx-days-wrap.days-7 .wx-days {
+    .wx-days-wrap.days-5,
+    .wx-days-wrap.days-7 {
       overflow-x:auto;
       -webkit-overflow-scrolling:touch;
-      padding-bottom:6px;
+      padding-bottom:12px;
       /* hide scrollbar */
       scrollbar-width:none;
     }
-    .wx-days-wrap.days-5 .wx-days::-webkit-scrollbar,
-    .wx-days-wrap.days-7 .wx-days::-webkit-scrollbar { display:none; }
+    .wx-days-wrap.days-5::-webkit-scrollbar,
+    .wx-days-wrap.days-7::-webkit-scrollbar { display:none; }
+    .wx-days-wrap.days-5 .wx-days,
+    .wx-days-wrap.days-7 .wx-days { flex-wrap:nowrap; }
 
     .wx-day {
       flex-shrink:0;
@@ -374,9 +428,9 @@
     }
     /* 3-day: fill available width equally */
     .wx-days-wrap.days-3 .wx-day { flex:1; min-width:0; }
-    /* 5 and 7-day: fixed card width for horizontal scroll */
+    /* 5 and 7-day: fixed card width, scroll handled by parent wrap */
     .wx-days-wrap.days-5 .wx-day,
-    .wx-days-wrap.days-7 .wx-day { width:100px; }
+    .wx-days-wrap.days-7 .wx-day { width:102px; }
 
     /* Wednesday highlight */
     .wx-day.is-wednesday {
@@ -554,6 +608,33 @@
       <div class="dot" id="freshness-dot"></div>
       <span id="freshness-label">Next test in —</span>
     </div>
+
+    <!-- Filter button — sits just above Leaflet zoom controls (bottom-left) -->
+    <div style="position:absolute;bottom:82px;left:10px;z-index:700;">
+      <button id="filter-btn" onclick="toggleFilterPanel()" title="Filter sirens">
+        <svg viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M1 3h14M3.5 7h9M6 11h4" stroke="#374151" stroke-width="1.8" stroke-linecap="round"/>
+        </svg>
+      </button>
+    </div>
+    <div id="filter-panel">
+      <div class="fp-title">Filter Sirens <button onclick="resetFilters()">Reset</button></div>
+      <div class="fp-row" data-filter="assigned"  onclick="toggleFilter(this)">
+        <div class="fp-check"></div><div class="fp-dot" style="background:#6b7280;"></div><span class="fp-label">Assigned</span>
+      </div>
+      <div class="fp-row checked" data-filter="active"   onclick="toggleFilter(this)">
+        <div class="fp-check"></div><div class="fp-dot" style="background:#10b981;"></div><span class="fp-label">Active</span>
+      </div>
+      <div class="fp-row checked" data-filter="attention" onclick="toggleFilter(this)">
+        <div class="fp-check"></div><div class="fp-dot" style="background:#f59e0b;"></div><span class="fp-label">Attention Needed</span>
+      </div>
+      <div class="fp-row checked" data-filter="action"   onclick="toggleFilter(this)">
+        <div class="fp-check"></div><div class="fp-dot" style="background:#f97316;"></div><span class="fp-label">Action Required</span>
+      </div>
+      <div class="fp-row checked" data-filter="urgent"   onclick="toggleFilter(this)">
+        <div class="fp-check"></div><div class="fp-dot" style="background:#dc2626;"></div><span class="fp-label">Urgent</span>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -574,7 +655,7 @@
     <div class="login-accent-bar"></div>
     <div class="login-input-wrap">
       <input id="login-pw" class="login-input" type="password" placeholder="Enter password" autocomplete="current-password" />
-      <button class="login-eye" onclick="toggleLoginEye()" tabindex="-1" aria-label="Show password">👁</button>
+      <button class="login-eye" onclick="toggleLoginEye()" tabindex="-1" aria-label="Show password" id="login-eye-btn">Show</button>
     </div>
     <button class="login-btn" id="login-btn" onclick="submitLogin()">Unlock Map</button>
     <div class="login-error" id="login-error"></div>
@@ -697,9 +778,74 @@ let activeCircles  = {};
 let locationMarker = null;
 let locationCircle = null;
 let watchId        = null;
-let currentWxDays  = 3;   // active tab: 3, 5, or 7
+let currentWxDays  = 3;
 let fabMenuOpen    = false;
 let wxFabOpen      = false;
+
+// Filter state — matches data-filter attrs; false = hidden
+let activeFilters = { assigned:false, active:true, attention:true, action:true, urgent:true };
+// Marker registry for filtering: { sirenId: { marker, category } }
+let markerRegistry = {};
+let filterPanelOpen = false;
+
+/* Map siren data → filter category */
+function sirenCategory(s){
+  if((s.signUpNeeded||'').toLowerCase()!=='yes') return 'assigned';
+  const d = urgencyDays(s);
+  if(d<=7)  return 'active';
+  if(d<=14) return 'attention';
+  if(d<=21) return 'action';
+  return 'urgent';
+}
+
+function toggleFilterPanel(){
+  filterPanelOpen = !filterPanelOpen;
+  document.getElementById('filter-panel').classList.toggle('open', filterPanelOpen);
+}
+
+function toggleFilter(row){
+  const key = row.dataset.filter;
+  activeFilters[key] = !activeFilters[key];
+  row.classList.toggle('checked', activeFilters[key]);
+  applyFilters();
+  updateFilterBtnState();
+}
+
+function resetFilters(){
+  activeFilters = { assigned:false, active:true, attention:true, action:true, urgent:true };
+  document.querySelectorAll('#filter-panel .fp-row').forEach(r=>{
+    r.classList.toggle('checked', activeFilters[r.dataset.filter]);
+  });
+  applyFilters();
+  updateFilterBtnState();
+}
+
+function updateFilterBtnState(){
+  // Highlight button if state differs from default (all except assigned checked)
+  const isDefault = !activeFilters.assigned && activeFilters.active && activeFilters.attention && activeFilters.action && activeFilters.urgent;
+  document.getElementById('filter-btn').classList.toggle('filtered', !isDefault);
+}
+
+function applyFilters(){
+  if(!map) return;
+  Object.entries(markerRegistry).forEach(([id, {marker, category}])=>{
+    if(activeFilters[category]){
+      if(!map.hasLayer(marker)) marker.addTo(map);
+    } else {
+      if(map.hasLayer(marker)) map.removeLayer(marker);
+    }
+  });
+}
+
+// Close filter panel when clicking outside
+document.addEventListener('click', e=>{
+  if(filterPanelOpen
+    && !document.getElementById('filter-panel').contains(e.target)
+    && !document.getElementById('filter-btn').contains(e.target)){
+    filterPanelOpen = false;
+    document.getElementById('filter-panel').classList.remove('open');
+  }
+});
 
 /* =====================================================
    FRISCO BOUNDARY
@@ -813,7 +959,7 @@ async function checkKillSwitch() {
     const dataRes = await fetch(dataUrl);
     const data    = await dataRes.json();
     const val = (data.values || [])[0]?.[0] || '';
-    return val.trim().length > 0;
+    return val.trim().toUpperCase() === 'TRUE';
   } catch (e) {
     console.warn('Kill switch check failed, defaulting to open:', e);
     return false;
@@ -851,7 +997,10 @@ function initLogin(){
 
 function toggleLoginEye(){
   const inp = document.getElementById('login-pw');
-  inp.type = inp.type==='password' ? 'text' : 'password';
+  const btn = document.getElementById('login-eye-btn');
+  const showing = inp.type === 'password';
+  inp.type = showing ? 'text' : 'password';
+  btn.textContent = showing ? 'Hide' : 'Show';
 }
 
 function submitLogin(){
@@ -1047,6 +1196,12 @@ function addMarker(siren){
   });
 
   const marker = L.marker([siren.lat,siren.lng],{icon}).addTo(map);
+
+  // Register for filter system
+  const category = sirenCategory(siren);
+  markerRegistry[siren.id] = { marker, category };
+  // Apply current filter immediately (in case map was already filtered)
+  if(!activeFilters[category]) map.removeLayer(marker);
   marker.bindPopup(buildPopup(siren,color),{
     maxWidth:400, autoPan:true, autoPanPadding:[40,40], closeButton:false
   });
