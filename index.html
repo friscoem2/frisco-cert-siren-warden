@@ -240,6 +240,9 @@
     /* Active state — accent border when any filter is deselected from default */
     #filter-btn.filtered { border-color:var(--cert-accent); background:#fffbeb; }
 
+    /* Report view button — active state */
+    #report-view-btn.active { border-color:#1d4ed8; background:#eff6ff; }
+
     #filter-panel {
       position:absolute;
       /* sits just above the zoom control — Leaflet zoom is at bottom-left ~80px from bottom */
@@ -610,7 +613,11 @@
     </div>
 
     <!-- Filter button — sits just above Leaflet zoom controls (bottom-left) -->
-    <div style="position:absolute;bottom:82px;left:10px;z-index:700;">
+    <div style="position:absolute;bottom:82px;left:10px;z-index:700;display:flex;flex-direction:column;gap:6px;align-items:flex-start;">
+      <button id="report-view-btn" onclick="toggleReportView()" title="Report view — assigned sirens only"
+        style="background:white;border:2px solid rgba(0,0,0,.1);border-radius:8px;width:34px;height:34px;display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,.12);touch-action:manipulation;padding:0;font-size:16px;transition:background .15s;">
+        📋
+      </button>
       <button id="filter-btn" onclick="toggleFilterPanel()" title="Filter sirens">
         <svg viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
           <path d="M1 3h14M3.5 7h9M6 11h4" stroke="#374151" stroke-width="1.8" stroke-linecap="round"/>
@@ -821,9 +828,29 @@ function resetFilters(){
 }
 
 function updateFilterBtnState(){
-  // Highlight button if state differs from default (all except assigned checked)
   const isDefault = !activeFilters.assigned && activeFilters.active && activeFilters.attention && activeFilters.action && activeFilters.urgent;
   document.getElementById('filter-btn').classList.toggle('filtered', !isDefault);
+  // Report view active = assigned only
+  const isReportView = activeFilters.assigned && !activeFilters.active && !activeFilters.attention && !activeFilters.action && !activeFilters.urgent;
+  document.getElementById('report-view-btn').classList.toggle('active', isReportView);
+}
+
+function toggleReportView(){
+  // If already in report view, reset to default; otherwise switch to assigned-only
+  const isReportView = activeFilters.assigned && !activeFilters.active && !activeFilters.attention && !activeFilters.action && !activeFilters.urgent;
+  if(isReportView){
+    activeFilters = { assigned:false, active:true, attention:true, action:true, urgent:true };
+  } else {
+    activeFilters = { assigned:true, active:false, attention:false, action:false, urgent:false };
+  }
+  document.querySelectorAll('#filter-panel .fp-row').forEach(r=>{
+    r.classList.toggle('checked', activeFilters[r.dataset.filter]);
+  });
+  // Close filter panel if open
+  filterPanelOpen = false;
+  document.getElementById('filter-panel').classList.remove('open');
+  applyFilters();
+  updateFilterBtnState();
 }
 
 function applyFilters(){
@@ -1264,7 +1291,7 @@ function buildPopup(siren, color){
        </div>`;
 
   let h=`
-  <div>
+  <div style="display:flex;flex-direction:column;height:100%;min-height:0;">
     <div class="popup-header">
       <div class="popup-siren-id">Siren #${esc(siren.id)}</div>
       <div class="popup-title">${esc(siren.friendlyName)}</div>
