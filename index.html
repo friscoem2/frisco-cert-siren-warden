@@ -245,122 +245,93 @@
     /* Report view button — active state */
     #report-view-btn.active { border-color:#1d4ed8; background:#eff6ff; }
 
-    /* ── RADAR BUTTON ── */
-    #radar-btn {
-      background:white; border:2px solid rgba(0,0,0,.1);
-      border-radius:8px; width:34px; height:34px;
-      display:flex; align-items:center; justify-content:center;
-      cursor:pointer; box-shadow:var(--sh-sm);
-      touch-action:manipulation; padding:0; font-size:18px;
-      transition:background .15s;
+    /* ── RADAR OVERLAY (floats on map, no backdrop) ── */
+    #radar-overlay {
+      display:none;
+      position:fixed;
+      /* sits just above the filter/radar buttons on the left,
+         bottom-aligned with some breathing room above safe area */
+      left:54px;
+      bottom:max(16px, env(safe-area-inset-bottom, 16px));
+      z-index:700;
+      width:min(310px, calc(100vw - 70px));
+      background:rgba(255,255,255,.96);
+      border:1px solid var(--gray-200);
+      border-radius:16px;
+      box-shadow:var(--sh-lg);
+      padding:12px 14px 14px;
+      backdrop-filter:blur(6px);
+      -webkit-backdrop-filter:blur(6px);
     }
-    #radar-btn:active { background:var(--gray-100); }
-    #radar-btn.active { border-color:#3b82f6; background:#eff6ff; }
+    #radar-overlay.open { display:block; }
 
-    /* ── RADAR PLAYER PANEL (bottom sheet, shorter than weather) ── */
-    #radar-panel {
-      display:none; position:fixed; inset:0; z-index:11000;
-      background:rgba(0,0,0,.5);
-      align-items:flex-end; justify-content:center;
-      touch-action:none;
-    }
-    #radar-panel.open { display:flex; }
+    .ro-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:10px; padding-bottom:8px; border-bottom:2px solid var(--cert-accent); }
+    .ro-title { font-family:var(--font-d); font-size:13px; font-weight:800; letter-spacing:.8px; text-transform:uppercase; color:var(--cert-green); }
+    .ro-close { background:var(--gray-100); border:none; border-radius:50%; width:24px; height:24px; display:flex; align-items:center; justify-content:center; font-size:13px; color:var(--gray-600); cursor:pointer; touch-action:manipulation; flex-shrink:0; }
+    .ro-close:active { background:var(--gray-200); }
 
-    .radar-sheet {
-      background:white; width:100%; max-width:540px;
-      border-radius:24px 24px 0 0;
-      display:flex; flex-direction:column;
-      box-shadow:0 -8px 40px rgba(0,0,0,.3);
-      padding-bottom:env(safe-area-inset-bottom,0px);
-      touch-action:pan-y;
-    }
-    .radar-handle { width:40px; height:4px; background:var(--gray-300); border-radius:2px; margin:12px auto 0; flex-shrink:0; }
-
-    .radar-sheet-header {
-      background:var(--cert-green); color:white;
-      padding:14px 20px 12px; position:relative; flex-shrink:0;
-    }
-    .radar-sheet-header::after { content:''; position:absolute; bottom:0; left:0; right:0; height:3px; background:var(--cert-accent); }
-    .radar-sheet-header-top { display:flex; align-items:center; justify-content:space-between; margin-bottom:2px; }
-    .radar-sheet-title { font-family:var(--font-d); font-size:22px; font-weight:900; text-transform:uppercase; letter-spacing:.5px; }
-    .radar-sheet-sub { font-size:12px; opacity:.8; font-weight:500; }
-    .radar-close { background:rgba(255,255,255,.15); border:none; color:white; width:36px; height:36px; border-radius:50%; font-size:20px; cursor:pointer; display:flex; align-items:center; justify-content:center; flex-shrink:0; touch-action:manipulation; }
-    .radar-close:active { background:rgba(255,255,255,.3); }
-
-    .radar-body { padding:16px 20px 20px; display:flex; flex-direction:column; gap:14px; }
-
-    /* Time label */
-    .radar-time-row { display:flex; align-items:center; justify-content:space-between; }
-    .radar-time-label {
-      font-family:var(--font-d); font-size:20px; font-weight:800;
-      color:var(--gray-800); letter-spacing:.3px;
-    }
-    .radar-time-badge {
-      font-family:var(--font-d); font-size:11px; font-weight:700;
-      letter-spacing:1px; text-transform:uppercase;
-      padding:3px 10px; border-radius:20px;
-      background:#dbeafe; color:#1e40af;
-    }
-    .radar-time-badge.live { background:#dcfce7; color:#166534; }
+    /* Time row */
+    .ro-time-row { display:flex; align-items:center; justify-content:space-between; margin-bottom:8px; }
+    .ro-time { font-family:var(--font-d); font-size:18px; font-weight:800; color:var(--gray-800); }
+    .ro-badge { font-family:var(--font-d); font-size:10px; font-weight:700; letter-spacing:.8px; text-transform:uppercase; padding:2px 8px; border-radius:20px; background:#dbeafe; color:#1e40af; }
+    .ro-badge.live { background:#dcfce7; color:#166534; }
 
     /* Scrubber */
-    .radar-scrubber-wrap { position:relative; }
-    .radar-scrubber {
-      width:100%; height:6px; border-radius:3px;
+    .ro-scrubber {
+      width:100%; height:5px; border-radius:3px; margin-bottom:4px;
       background:var(--gray-200); outline:none; cursor:pointer;
-      -webkit-appearance:none; appearance:none;
-      touch-action:manipulation;
+      -webkit-appearance:none; appearance:none; touch-action:manipulation;
+      display:block;
     }
-    .radar-scrubber::-webkit-slider-thumb {
-      -webkit-appearance:none; appearance:none;
-      width:20px; height:20px; border-radius:50%;
+    .ro-scrubber::-webkit-slider-thumb {
+      -webkit-appearance:none; width:18px; height:18px; border-radius:50%;
       background:var(--cert-green); border:3px solid white;
-      box-shadow:0 2px 6px rgba(0,0,0,.25); cursor:pointer;
+      box-shadow:0 2px 5px rgba(0,0,0,.25); cursor:pointer;
     }
-    .radar-scrubber::-moz-range-thumb {
-      width:20px; height:20px; border-radius:50%;
+    .ro-scrubber::-moz-range-thumb {
+      width:18px; height:18px; border-radius:50%;
       background:var(--cert-green); border:3px solid white;
-      box-shadow:0 2px 6px rgba(0,0,0,.25); cursor:pointer;
+      box-shadow:0 2px 5px rgba(0,0,0,.25); cursor:pointer;
     }
 
-    /* Frame tick marks */
-    .radar-ticks { display:flex; justify-content:space-between; padding:2px 2px 0; }
-    .radar-tick { width:2px; height:6px; background:var(--gray-300); border-radius:1px; }
-    .radar-tick.active { background:var(--cert-green); }
+    /* Ticks */
+    .ro-ticks { display:flex; justify-content:space-between; margin-bottom:10px; }
+    .ro-tick { width:2px; height:5px; background:var(--gray-300); border-radius:1px; }
+    .ro-tick.active { background:var(--cert-green); }
 
-    /* Controls */
-    .radar-controls { display:flex; align-items:center; gap:10px; }
-    .radar-play-btn {
+    /* Controls row */
+    .ro-controls { display:flex; align-items:center; gap:8px; }
+    .ro-play-btn {
       background:var(--cert-green); color:white; border:none;
-      border-radius:50%; width:48px; height:48px; flex-shrink:0;
+      border-radius:50%; width:38px; height:38px; flex-shrink:0;
       display:flex; align-items:center; justify-content:center;
-      font-size:20px; cursor:pointer; touch-action:manipulation;
-      box-shadow:0 3px 10px rgba(30,82,56,.35);
+      font-size:16px; cursor:pointer; touch-action:manipulation;
+      box-shadow:0 2px 8px rgba(30,82,56,.35);
     }
-    .radar-play-btn:active { transform:scale(.95); }
-    .radar-speed-btn {
+    .ro-play-btn:active { transform:scale(.94); }
+    .ro-speed-btn {
       background:var(--gray-100); border:1px solid var(--gray-200);
-      border-radius:8px; padding:6px 12px;
-      font-family:var(--font-d); font-size:13px; font-weight:700;
+      border-radius:7px; padding:5px 10px;
+      font-family:var(--font-d); font-size:12px; font-weight:700;
       letter-spacing:.5px; text-transform:uppercase; color:var(--gray-600);
-      cursor:pointer; touch-action:manipulation;
+      cursor:pointer; touch-action:manipulation; flex-shrink:0;
     }
-    .radar-speed-btn:active { background:var(--gray-200); }
-    .radar-opacity-wrap { flex:1; display:flex; align-items:center; gap:8px; }
-    .radar-opacity-label { font-family:var(--font-d); font-size:11px; font-weight:700; letter-spacing:.5px; text-transform:uppercase; color:var(--gray-400); white-space:nowrap; }
-    .radar-opacity-slider {
+    .ro-speed-btn:active { background:var(--gray-200); }
+    .ro-opacity-wrap { flex:1; display:flex; align-items:center; gap:6px; min-width:0; }
+    .ro-opacity-label { font-family:var(--font-d); font-size:10px; font-weight:700; letter-spacing:.5px; text-transform:uppercase; color:var(--gray-400); white-space:nowrap; }
+    .ro-opacity-slider {
       flex:1; height:4px; border-radius:2px; background:var(--gray-200);
-      outline:none; cursor:pointer; -webkit-appearance:none; appearance:none;
+      outline:none; cursor:pointer; -webkit-appearance:none; appearance:none; min-width:0;
     }
-    .radar-opacity-slider::-webkit-slider-thumb {
-      -webkit-appearance:none; width:16px; height:16px; border-radius:50%;
-      background:#3b82f6; border:2px solid white; box-shadow:0 1px 4px rgba(0,0,0,.2); cursor:pointer;
+    .ro-opacity-slider::-webkit-slider-thumb {
+      -webkit-appearance:none; width:14px; height:14px; border-radius:50%;
+      background:#3b82f6; border:2px solid white; box-shadow:0 1px 3px rgba(0,0,0,.2); cursor:pointer;
     }
-    .radar-opacity-slider::-moz-range-thumb {
-      width:16px; height:16px; border-radius:50%;
-      background:#3b82f6; border:2px solid white; box-shadow:0 1px 4px rgba(0,0,0,.2); cursor:pointer;
+    .ro-opacity-slider::-moz-range-thumb {
+      width:14px; height:14px; border-radius:50%;
+      background:#3b82f6; border:2px solid white; cursor:pointer;
     }
-    .radar-loading { font-family:var(--font-d); font-size:13px; font-weight:700; letter-spacing:.5px; text-transform:uppercase; color:var(--gray-400); text-align:center; padding:20px 0; }
+    .ro-loading { font-family:var(--font-d); font-size:12px; font-weight:700; letter-spacing:.5px; text-transform:uppercase; color:var(--gray-400); text-align:center; padding:10px 0; }
 
     #filter-panel {
       position:absolute;
@@ -805,41 +776,28 @@
   <div id="lightbox-caption"></div>
 </div>
 
-<!-- RADAR PANEL -->
-<div id="radar-panel" onclick="closeRadarIfBg(event)">
-  <div class="radar-sheet">
-    <div class="radar-handle"></div>
-    <div class="radar-sheet-header">
-      <div class="radar-sheet-header-top">
-        <span class="radar-sheet-title">🌧️ Weather Radar</span>
-        <button class="radar-close" onclick="closeRadarPanel()">✕</button>
-      </div>
-      <div class="radar-sheet-sub">Composite Reflectivity — Frisco, TX</div>
+<!-- RADAR OVERLAY (floats on map) -->
+<div id="radar-overlay">
+  <div class="ro-header">
+    <span class="ro-title">🌧️ Weather Radar</span>
+    <button class="ro-close" onclick="closeRadarPanel()">✕</button>
+  </div>
+  <div id="radar-loading" class="ro-loading">Loading radar…</div>
+  <div id="radar-controls-wrap" style="display:none;flex-direction:column;gap:0;">
+    <div class="ro-time-row">
+      <div class="ro-time" id="radar-time-label">—</div>
+      <div class="ro-badge" id="radar-time-badge">Past</div>
     </div>
-    <div class="radar-body">
-      <div id="radar-loading" class="radar-loading">Loading radar frames…</div>
-      <div id="radar-controls-wrap" style="display:none;flex-direction:column;gap:14px;">
-        <!-- Time display -->
-        <div class="radar-time-row">
-          <div class="radar-time-label" id="radar-time-label">—</div>
-          <div class="radar-time-badge" id="radar-time-badge">Past</div>
-        </div>
-        <!-- Scrubber + ticks -->
-        <div class="radar-scrubber-wrap">
-          <input type="range" class="radar-scrubber" id="radar-scrubber" min="0" value="0" step="1"
-                 oninput="onRadarScrub(this.value)">
-        </div>
-        <div class="radar-ticks" id="radar-ticks"></div>
-        <!-- Controls row -->
-        <div class="radar-controls">
-          <button class="radar-play-btn" id="radar-play-btn" onclick="toggleRadarPlay()">▶</button>
-          <button class="radar-speed-btn" id="radar-speed-btn" onclick="cycleRadarSpeed()">1×</button>
-          <div class="radar-opacity-wrap">
-            <span class="radar-opacity-label">Opacity</span>
-            <input type="range" class="radar-opacity-slider" id="radar-opacity" min="20" max="90" value="70" step="5"
-                   oninput="setRadarOpacity(this.value)">
-          </div>
-        </div>
+    <input type="range" class="ro-scrubber" id="radar-scrubber" min="0" value="0" step="1"
+           oninput="onRadarScrub(this.value)">
+    <div class="ro-ticks" id="radar-ticks"></div>
+    <div class="ro-controls" style="margin-top:8px;">
+      <button class="ro-play-btn" id="radar-play-btn" onclick="toggleRadarPlay()">▶</button>
+      <button class="ro-speed-btn" id="radar-speed-btn" onclick="cycleRadarSpeed()">1×</button>
+      <div class="ro-opacity-wrap">
+        <span class="ro-opacity-label">Opacity</span>
+        <input type="range" class="ro-opacity-slider" id="radar-opacity" min="20" max="90" value="70" step="5"
+               oninput="setRadarOpacity(this.value)">
       </div>
     </div>
   </div>
@@ -2070,20 +2028,19 @@ function toggleRadarPanel(){
 
 function openRadarPanel(){
   radarPanelOpen = true;
-  document.getElementById('radar-panel').classList.add('open');
+  document.getElementById('radar-overlay').classList.add('open');
   document.getElementById('radar-btn').classList.add('active');
   if(!radarDataLoaded) loadRadarData();
 }
 
 function closeRadarPanel(){
   radarPanelOpen = false;
-  document.getElementById('radar-panel').classList.remove('open');
-  // Stop playing but keep overlay on map
+  document.getElementById('radar-overlay').classList.remove('open');
   if(radarPlaying) pauseRadar();
 }
 
 function closeRadarIfBg(e){
-  if(e.target === document.getElementById('radar-panel')) closeRadarPanel();
+  // No backdrop — not needed for overlay
 }
 
 function loadRadarData(){
@@ -2140,6 +2097,8 @@ function getOrCreateLayer(idx){
       opacity: radarOpacity,
       zIndex: 900,
       tileSize: RADAR_SIZE,
+      maxNativeZoom: 6,
+      maxZoom: 18,
       attribution: '© RainViewer'
     });
   }
@@ -2176,14 +2135,12 @@ function updateRadarUI(idx){
   document.getElementById('radar-time-label').textContent = frame.label;
   const badge = document.getElementById('radar-time-badge');
   badge.textContent = isLatest ? 'Latest' : 'Past';
-  badge.className   = 'radar-time-badge' + (isLatest ? ' live' : '');
+  badge.className   = 'ro-badge' + (isLatest ? ' live' : '');
 
-  // Scrubber
   const scrubber = document.getElementById('radar-scrubber');
   scrubber.value = idx;
 
-  // Ticks
-  document.querySelectorAll('.radar-tick').forEach((t, i) => {
+  document.querySelectorAll('.ro-tick').forEach((t, i) => {
     t.classList.toggle('active', i === idx);
   });
 }
@@ -2195,7 +2152,7 @@ function buildRadarTicks(){
   scrubber.value  = radarFrames.length - 1;
 
   container.innerHTML = radarFrames.map((_, i) =>
-    `<div class="radar-tick${i === radarFrames.length - 1 ? ' active' : ''}"></div>`
+    `<div class="ro-tick${i === radarFrames.length - 1 ? ' active' : ''}"></div>`
   ).join('');
 }
 
