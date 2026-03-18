@@ -540,6 +540,8 @@
     /* ── FORM MODAL ── */
     #formModal { display:none; position:fixed; inset:0; z-index:10000; background:rgba(0,0,0,.55); }
     #formModal.open { display:block; }
+    #suggestModal { display:none; position:fixed; inset:0; z-index:10000; background:rgba(0,0,0,.55); }
+    #suggestModal.open { display:block; }
     .modal-content { background:white; width:100%; height:100%; height:calc(var(--vh,1vh)*100); display:flex; flex-direction:column; }
     .modal-header { background:var(--cert-green); color:white; padding:14px 18px; padding-top:calc(14px + env(safe-area-inset-top,0px)); display:flex; align-items:center; gap:12px; flex-shrink:0; position:relative; }
     .modal-header::after { content:''; position:absolute; bottom:0; left:0; right:0; height:3px; background:var(--cert-accent); }
@@ -673,6 +675,7 @@
   <button id="fab-legend"  class="fab"             onclick="toggleLegend()">🗺️ Legend</button>
   <button id="fab-weather" class="fab"             onclick="openWeatherPanel()">☁️ Weather</button>
   <button id="fab-report"  class="fab"             onclick="toggleReportView()">📋 Report</button>
+  <button id="fab-suggest" class="fab"             onclick="openSuggestionBox()">🗳️ Suggestion Box</button>
 </div>
 
 <!-- PHOTO LIGHTBOX -->
@@ -757,6 +760,19 @@
     </div>
     <div class="modal-body">
       <iframe id="formIframe" src="" frameborder="0"></iframe>
+    </div>
+  </div>
+</div>
+
+<!-- SUGGESTION BOX MODAL -->
+<div id="suggestModal">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h2>🗳️ Suggestion Box</h2>
+      <button class="modal-close" onclick="closeSuggestionBox()" aria-label="Close">✕</button>
+    </div>
+    <div class="modal-body">
+      <iframe id="suggestIframe" src="" frameborder="0"></iframe>
     </div>
   </div>
 </div>
@@ -1594,6 +1610,8 @@ function openForm(id,name){
   document.getElementById('formIframe').src=GOOGLE_FORM_URL+'?embedded=true';
   document.getElementById('formModal').classList.add('open');
   document.body.style.overflow='hidden';
+  fabMenuOpen = false;
+  document.getElementById('fab-cluster').classList.remove('menu-open');
 }
 function closeModal(){
   document.getElementById('formModal').classList.remove('open');
@@ -1601,6 +1619,24 @@ function closeModal(){
   document.body.style.overflow='';
 }
 window.addEventListener('click',e=>{ if(e.target===document.getElementById('formModal')) closeModal(); });
+
+/* =====================================================
+   SUGGESTION BOX
+   ===================================================== */
+function openSuggestionBox(){
+  document.getElementById('suggestIframe').src='https://docs.google.com/forms/d/e/1FAIpQLSeozkeabv9CJDhsBopiHXz4_POYjnoZlC5IFXUQxgh1kSSkIg/viewform?embedded=true';
+  document.getElementById('suggestModal').classList.add('open');
+  document.body.style.overflow='hidden';
+  // Close FAB menu
+  fabMenuOpen = false;
+  document.getElementById('fab-cluster').classList.remove('menu-open');
+}
+function closeSuggestionBox(){
+  document.getElementById('suggestModal').classList.remove('open');
+  document.getElementById('suggestIframe').src='';
+  document.body.style.overflow='';
+}
+window.addEventListener('click',e=>{ if(e.target===document.getElementById('suggestModal')) closeSuggestionBox(); });
 
 /* =====================================================
    UI HELPERS
