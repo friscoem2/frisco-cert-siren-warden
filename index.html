@@ -2047,6 +2047,10 @@ function loadRadarData(){
   document.getElementById('radar-loading').style.display = 'block';
   document.getElementById('radar-controls-wrap').style.display = 'none';
 
+  // Clear any cached layers from a previous load
+  if(map) Object.values(radarLayers).forEach(l => { if(map.hasLayer(l)) map.removeLayer(l); });
+  radarLayers = {};
+
   fetch(RADAR_API, { mode: 'cors' })
     .then(r => {
       if(!r.ok) throw new Error(`HTTP ${r.status}`);
@@ -2096,7 +2100,8 @@ function getOrCreateLayer(idx){
     radarLayers[path] = L.tileLayer(radarTileUrl(path), {
       opacity: radarOpacity,
       zIndex: 900,
-      tileSize: RADAR_SIZE,
+      tileSize: 512,
+      zoomOffset: -1,
       maxNativeZoom: 6,
       maxZoom: 18,
       attribution: '© RainViewer'
