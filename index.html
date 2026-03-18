@@ -245,6 +245,38 @@
     /* Report view button — active state */
     #report-view-btn.active { border-color:#1d4ed8; background:#eff6ff; }
 
+    /* ── SHARED LEFT-SIDE MAP BUTTON STYLE ── */
+    .map-side-btn {
+      background:white; border:2px solid rgba(0,0,0,.1);
+      border-radius:8px; width:34px; height:34px;
+      display:flex; align-items:center; justify-content:center;
+      cursor:pointer; box-shadow:var(--sh-sm);
+      touch-action:manipulation; padding:0; font-size:18px;
+      transition:background .15s, border-color .15s;
+    }
+    .map-side-btn:active { background:var(--gray-100); }
+    #radar-btn.active    { border-color:#3b82f6; background:#eff6ff; }
+    #coverage-btn.active { border-color:#8b5cf6; background:#f5f3ff; }
+
+    /* Coverage mode banner */
+    #coverage-banner {
+      display:none;
+      position:fixed;
+      top:calc(var(--header-h) + 10px);
+      left:50%; transform:translateX(-50%);
+      z-index:800;
+      background:rgba(139,92,246,.92);
+      color:white;
+      border-radius:999px;
+      padding:6px 16px;
+      font-family:var(--font-d); font-size:12px; font-weight:800;
+      letter-spacing:.8px; text-transform:uppercase;
+      box-shadow:var(--sh-md);
+      white-space:nowrap;
+      pointer-events:none;
+    }
+    #coverage-banner.visible { display:block; }
+
     /* ── RADAR OVERLAY (floats on map, no backdrop) ── */
     #radar-overlay {
       display:none;
@@ -724,10 +756,12 @@
       <div class="dot" id="freshness-dot"></div>
       <span id="freshness-label">Next test in —</span>
     </div>
+    <div id="coverage-banner">🎧 Audible Range Coverage — View Only</div>
 
     <!-- Radar + Filter buttons — bottom-left above zoom controls -->
     <div style="position:absolute;bottom:82px;left:10px;z-index:700;display:flex;flex-direction:column;gap:6px;">
-      <button id="radar-btn" onclick="toggleRadarPanel()" title="Weather radar">🌧️</button>
+      <button id="coverage-btn" class="map-side-btn" onclick="toggleCoverageMode()" title="Toggle audible range coverage">🎧</button>
+      <button id="radar-btn"    class="map-side-btn" onclick="toggleRadarPanel()"   title="Weather radar">🌧️</button>
       <button id="filter-btn" onclick="toggleFilterPanel()" title="Filter sirens">
         <svg viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
           <path d="M1 3h14M3.5 7h9M6 11h4" stroke="#374151" stroke-width="1.8" stroke-linecap="round"/>
@@ -1329,6 +1363,8 @@ function initMap(sirens){
   hideLoadingScreen();
   document.getElementById('data-source-bar').style.display='flex';
   startFreshnessTimer();
+
+  allSirens = sirens; // store for coverage mode
 
   const lives = calcLivesProtected(sirens);
   const livesEl = document.getElementById('lives-count');
@@ -2027,11 +2063,87 @@ function renderWeather(days){
 }
 
 /* =====================================================
+   AUDIBLE RANGE COVERAGE MODE
+   ===================================================== */
+let coverageMode    = false;
+let coverageLayers  = []; // { circle, label } for each siren
+let allSirens       = []; // full siren list, stored on load
+
+function toggleCoverageMode(){
+  coverageMode = !coverageMode;
+  const btn = document.getElementById('coverage-btn');
+  const banner = document.getElementById('coverage-banner');
+
+  btn.classList.toggle('active', coverageMode);
+  banner.classList.toggle('visible', coverageMode);
+
+  if(coverageMode){
+    showAllCoverageCircles();
+    // Disable marker interaction
+    Object.values(markerRegistry).forEach(({marker}) => {
+      marker.off('click');
+      marker.getElement() && (marker.getElement().style.pointerEvents = 'none');
+    });
+  } else {
+    hideAllCoverageCircles();
+    // Re-enable marker interaction — re-bind click handlers
+    allSirens.forEach(siren => {
+      const entry = markerRegistry[siren.id];
+      if(!entry) return;
+      const { marker } = entry;
+      marker.getElement() && (marker.getElement().style.pointerEvents = '');
+      marker.off('click');
+      marker.on('click', () => {
+        clearCircle(siren.id);
+        const color = sirenColor(siren);
+        const circle = L.circle([siren.lat, siren.lng], {
+          radius:1609.34, color, fillColor:color, fillOpacity:.07,
+          weight:2, dashArray:'8 8', opacity:.7
+        }).addTo(map);
+        const label = L.marker([siren.lat, siren.lng], {
+          icon: L.divIcon({
+            className:'',
+            html:`<div style="background:rgba(255,255,255,.95);padding:6px 12px;border-radius:8px;font-family:'Barlow Condensed',sans-serif;font-size:13px;font-weight:700;color:#4b5563;letter-spacing:.5px;text-transform:uppercase;white-space:nowrap;box-shadow:0 3px 8px rgba(0,0,0,.2);">~ 1 Mile Audible Range</div>`,
+            iconSize:[160,28], iconAnchor:[80,-18]
+          }), interactive:false
+        }).addTo(map);
+        activeCircles[siren.id] = { circle, label };
+      });
+      marker.off('popupclose');
+      marker.on('popupclose', () => clearCircle(siren.id));
+    });
+  }
+}
+
+function showAllCoverageCircles(){
+  hideAllCoverageCircles(); // clear any existing first
+  allSirens.forEach(siren => {
+    if(isNaN(siren.lat) || isNaN(siren.lng)) return;
+    const color = sirenColor(siren);
+    const circle = L.circle([siren.lat, siren.lng], {
+      radius: 1609.34,
+      color: '#8b5cf6',
+      fillColor: '#8b5cf6',
+      fillOpacity: 0.06,
+      weight: 1.5,
+      dashArray: '6 6',
+      opacity: 0.55
+    }).addTo(map);
+    coverageLayers.push(circle);
+  });
+}
+
+function hideAllCoverageCircles(){
+  coverageLayers.forEach(l => { if(map.hasLayer(l)) map.removeLayer(l); });
+  coverageLayers = [];
+}
+
+/* =====================================================
    WEATHER RADAR — RainViewer
    ===================================================== */
 const RADAR_API   = 'https://api.rainviewer.com/public/weather-maps.json';
 const RADAR_SIZE  = 512;
-const RADAR_COLOR = 1;    // NOAA-style color scheme (green→yellow→red)
+const RADAR_COLOR = 1;    // Classic NOAA color scheme (green→yellow→red)
 const RADAR_OPTS  = '1_1'; // smooth=1, snow=1
 
 let radarFrames      = [];   // [{time, path, label}]
