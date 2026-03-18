@@ -791,10 +791,10 @@
 
 <!-- KILL SWITCH SCREEN -->
 <div id="kill-screen">
-  <div class="kill-icon">⛈️</div>
+  <img class="kill-logo" src="https://drive.google.com/thumbnail?id=16Lg4zmmXXKSeqZXpguuJMuZVAh3Xu9dv&sz=w200" alt="Frisco CERT Logo" onerror="this.style.display='none'">
   <div class="kill-title">Testing Canceled</div>
   <div class="kill-accent"></div>
-  <div class="kill-msg">Due to inclement weather, testing has been canceled. Please stay home and we'll see you on the next test.</div>
+  <div class="kill-msg">Testing for today has been canceled. Please stay home, and we'll see you at the next scheduled test.</div>
 </div>
 
 <!-- LOGIN SCREEN -->
@@ -2071,46 +2071,31 @@ let allSirens       = []; // full siren list, stored on load
 
 function toggleCoverageMode(){
   coverageMode = !coverageMode;
-  const btn = document.getElementById('coverage-btn');
+  const btn    = document.getElementById('coverage-btn');
   const banner = document.getElementById('coverage-banner');
 
   btn.classList.toggle('active', coverageMode);
   banner.classList.toggle('visible', coverageMode);
 
   if(coverageMode){
+    // Clear any open individual circles first
+    Object.keys(activeCircles).forEach(id => clearCircle(id));
+    // Close any open popups
+    if(map) map.closePopup();
     showAllCoverageCircles();
-    // Disable marker interaction
+    // Disable interaction via CSS only — don't touch Leaflet event system
     Object.values(markerRegistry).forEach(({marker}) => {
-      marker.off('click');
-      marker.getElement() && (marker.getElement().style.pointerEvents = 'none');
+      const el = marker.getElement();
+      if(el) el.style.pointerEvents = 'none';
     });
   } else {
     hideAllCoverageCircles();
-    // Re-enable marker interaction — re-bind click handlers
-    allSirens.forEach(siren => {
-      const entry = markerRegistry[siren.id];
-      if(!entry) return;
-      const { marker } = entry;
-      marker.getElement() && (marker.getElement().style.pointerEvents = '');
-      marker.off('click');
-      marker.on('click', () => {
-        clearCircle(siren.id);
-        const color = sirenColor(siren);
-        const circle = L.circle([siren.lat, siren.lng], {
-          radius:1609.34, color, fillColor:color, fillOpacity:.07,
-          weight:2, dashArray:'8 8', opacity:.7
-        }).addTo(map);
-        const label = L.marker([siren.lat, siren.lng], {
-          icon: L.divIcon({
-            className:'',
-            html:`<div style="background:rgba(255,255,255,.95);padding:6px 12px;border-radius:8px;font-family:'Barlow Condensed',sans-serif;font-size:13px;font-weight:700;color:#4b5563;letter-spacing:.5px;text-transform:uppercase;white-space:nowrap;box-shadow:0 3px 8px rgba(0,0,0,.2);">~ 1 Mile Audible Range</div>`,
-            iconSize:[160,28], iconAnchor:[80,-18]
-          }), interactive:false
-        }).addTo(map);
-        activeCircles[siren.id] = { circle, label };
-      });
-      marker.off('popupclose');
-      marker.on('popupclose', () => clearCircle(siren.id));
+    // Clear any stale individual circles that may have leaked in
+    Object.keys(activeCircles).forEach(id => clearCircle(id));
+    // Re-enable interaction — CSS only, Leaflet events were never removed
+    Object.values(markerRegistry).forEach(({marker}) => {
+      const el = marker.getElement();
+      if(el) el.style.pointerEvents = '';
     });
   }
 }
@@ -2250,7 +2235,7 @@ function getOrCreateLayer(idx){
       zIndex: 900,
       tileSize: 512,
       zoomOffset: -1,
-      maxNativeZoom: 7,
+      maxNativeZoom: 6,
       maxZoom: 18,
       attribution: '© RainViewer'
     });
