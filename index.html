@@ -613,11 +613,7 @@
     </div>
 
     <!-- Filter button — sits just above Leaflet zoom controls (bottom-left) -->
-    <div style="position:absolute;bottom:82px;left:10px;z-index:700;display:flex;flex-direction:column;gap:6px;align-items:flex-start;">
-      <button id="report-view-btn" onclick="toggleReportView()" title="Report view — assigned sirens only"
-        style="background:white;border:2px solid rgba(0,0,0,.1);border-radius:8px;width:34px;height:34px;display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,.12);touch-action:manipulation;padding:0;font-size:16px;transition:background .15s;">
-        📋
-      </button>
+    <div style="position:absolute;bottom:82px;left:10px;z-index:700;">
       <button id="filter-btn" onclick="toggleFilterPanel()" title="Filter sirens">
         <svg viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
           <path d="M1 3h14M3.5 7h9M6 11h4" stroke="#374151" stroke-width="1.8" stroke-linecap="round"/>
@@ -676,6 +672,7 @@
   <button id="fab-lb"      class="fab"             onclick="openLeaderboard()">🏆 Leaderboard</button>
   <button id="fab-legend"  class="fab"             onclick="toggleLegend()">🗺️ Legend</button>
   <button id="fab-weather" class="fab"             onclick="openWeatherPanel()">☁️ Weather</button>
+  <button id="fab-report"  class="fab"             onclick="toggleReportView()">📋 Report</button>
 </div>
 
 <!-- PHOTO LIGHTBOX -->
@@ -830,9 +827,10 @@ function resetFilters(){
 function updateFilterBtnState(){
   const isDefault = !activeFilters.assigned && activeFilters.active && activeFilters.attention && activeFilters.action && activeFilters.urgent;
   document.getElementById('filter-btn').classList.toggle('filtered', !isDefault);
-  // Report view active = assigned only
+  // Report view active = assigned only — highlight the FAB button
   const isReportView = activeFilters.assigned && !activeFilters.active && !activeFilters.attention && !activeFilters.action && !activeFilters.urgent;
-  document.getElementById('report-view-btn').classList.toggle('active', isReportView);
+  const fabReport = document.getElementById('fab-report');
+  if(fabReport) fabReport.style.background = isReportView ? '#eff6ff' : '';
 }
 
 function toggleReportView(){
@@ -1525,7 +1523,11 @@ function renderLeaderboard(rows){
     document.getElementById('lb-body').innerHTML='<div class="lb-empty">No rankings yet.<br>Get out there and volunteer! 🚨</div>';
     return;
   }
-  rows.sort((a,b)=>(parseInt(b[1])||0)-(parseInt(a[1])||0));
+  rows.sort((a,b)=>{
+    const visitDiff = (parseInt(b[1])||0) - (parseInt(a[1])||0);
+    if(visitDiff !== 0) return visitDiff;
+    return (parseInt(b[2])||0) - (parseInt(a[2])||0); // tiebreak: unique sites desc
+  });
   const top3 = rows.slice(0,3);
   const rest  = rows.slice(3);
   const podiumOrder = [top3[1], top3[0], top3[2]].filter(Boolean);
@@ -1652,17 +1654,63 @@ function startFreshnessTimer(){
   const dot   = document.getElementById('freshness-dot');
   const label = document.getElementById('freshness-label');
 
-  function tick(){
-    const now  = new Date();
-    const next = getNextWednesdayNoon();
-    const diff = Math.max(0, Math.floor((next - now) / 1000));
+  function getCTNow(){
+    // Returns current time expressed as a CT "virtual" Date (UTC fields = CT clock values)
+    const now = new Date();
+    const ct = new Intl.DateTimeFormat('en-US', {
+      timeZone:'America/Chicago', hour:'numeric', hour12:false,
+      minute:'numeric', second:'numeric', weekday:'short',
+      year:'numeric', month:'numeric', day:'numeric'
+    }).formatToParts(now);
+    const get = type => parseInt(ct.find(p=>p.type===type)?.value||'0');
+    // Build a plain object with CT clock values
+    return {
+      dayOfWeek: ct.find(p=>p.type==='weekday')?.value, // 'Wed' etc
+      wday: ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].indexOf(ct.find(p=>p.type==='weekday')?.value||''),
+      hour:   get('hour'),
+      minute: get('minute'),
+      second: get('second'),
+      nowMs:  now.getTime()
+    };
+  }
 
+  function tick(){
+    const ct  = getCTNow();
+    const dot   = document.getElementById('freshness-dot');
+    const label = document.getElementById('freshness-label');
+
+    const isWednesday  = ct.wday === 3;
+    const totalSecsCT  = ct.hour * 3600 + ct.minute * 60 + ct.second;
+    const noon         = 12 * 3600;          // 12:00:00
+    const noonPlus3    = 12 * 3600 + 3 * 60; // 12:03:00
+    const midnight     = 24 * 3600;          // end of day
+
+    // ── STATE 1: Test in progress (Wed 12:00:00 – 12:02:59) ──
+    if(isWednesday && totalSecsCT >= noon && totalSecsCT < noonPlus3){
+      label.innerHTML = '🚨&nbsp;<strong>SIREN TEST IN PROGRESS</strong>';
+      dot.style.background = '#dc2626';
+      return;
+    }
+
+    // ── STATE 2: Reports due countdown (Wed 12:03:00 – 23:59:59) ──
+    if(isWednesday && totalSecsCT >= noonPlus3 && totalSecsCT < midnight){
+      const secsUntilMidnight = midnight - totalSecsCT;
+      const h = Math.floor(secsUntilMidnight / 3600);
+      const m = Math.floor((secsUntilMidnight % 3600) / 60);
+      const s = secsUntilMidnight % 60;
+      label.textContent = `Reports due in ${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+      dot.style.background = '#f59e0b';
+      return;
+    }
+
+    // ── STATE 3: Countdown to next test ──
+    const next = getNextWednesdayNoon();
+    const diff = Math.max(0, Math.floor((next - ct.nowMs) / 1000));
     const days  = Math.floor(diff / 86400);
     const hours = Math.floor((diff % 86400) / 3600);
     const mins  = Math.floor((diff % 3600) / 60);
     const secs  = diff % 60;
 
-    if(diff === 0){ label.textContent='🚨 TEST IN PROGRESS'; dot.style.background='#dc2626'; return; }
     if(days > 0)        label.textContent = `Next test in ${days}d ${String(hours).padStart(2,'0')}h ${String(mins).padStart(2,'0')}m`;
     else if(hours > 0)  label.textContent = `Next test in ${hours}h ${String(mins).padStart(2,'0')}m ${String(secs).padStart(2,'0')}s`;
     else                label.textContent = `Next test in ${String(mins).padStart(2,'0')}m ${String(secs).padStart(2,'0')}s`;
