@@ -1493,7 +1493,10 @@ function clearCircle(id){
 /* =====================================================
    POPUP
    ===================================================== */
-function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function maskEmail(email){
+  if(!email || email.length < 5) return '***';
+  return email.slice(0, 4) + '***' + email[email.length - 1];
+}
 
 function buildPopup(siren, color){
   const sLow   = (siren.status||'').toLowerCase();
@@ -1549,7 +1552,8 @@ function buildPopup(siren, color){
         <div class="popup-row"><span class="popup-label">Last Visit</span><span class="popup-value">${siren.daysSinceVisit} days ago &nbsp;(${esc(siren.lastVisitDate)})</span></div>`;
   } else {
     const escapedEmail = esc(siren.currentSignup).replace(/'/g,"\\'");
-    h+=`<div class="assigned-chip">✅ <span>Volunteer already assigned for next test</span></div>
+    const masked = maskEmail(siren.currentSignup);
+    h+=`<div class="assigned-chip">✅ <span>Assigned: <strong>${esc(masked)}</strong></span></div>
         <div class="popup-row"><span class="popup-label">Last Sign Up</span><span class="popup-value">${siren.daysSinceSignup} days ago &nbsp;(${esc(siren.lastSignUpDate)})</span></div>
         <button class="popup-btn popup-btn-report" onclick="openReportGate(${siren.id},'${escapedEmail}')">📋 Report on This Siren</button>`;
   }
