@@ -437,13 +437,41 @@
     }
     @keyframes pulse-ring { 0%{transform:scale(.85);opacity:.5} 100%{transform:scale(1.4);opacity:0} }
 
-    .user-location-dot {
-      width:20px; height:20px; border-radius:50%;
-      background:#4285f4; border:3px solid white;
-      box-shadow:0 0 0 4px rgba(66,133,244,.25);
-      animation:loc-pulse 2s ease-in-out infinite;
+    /* User location — directional arrow marker */
+    .user-location-wrap {
+      width: 36px; height: 36px;
+      position: relative;
+      display: flex; align-items: center; justify-content: center;
     }
-    @keyframes loc-pulse { 0%,100%{box-shadow:0 0 0 4px rgba(66,133,244,.25)} 50%{box-shadow:0 0 0 8px rgba(66,133,244,.1)} }
+    /* Accuracy pulse ring behind everything */
+    .user-location-wrap::before {
+      content: '';
+      position: absolute; inset: -8px; border-radius: 50%;
+      background: rgba(66,133,244,.15);
+      animation: loc-pulse 2s ease-in-out infinite;
+    }
+    @keyframes loc-pulse {
+      0%,100% { transform: scale(1);   opacity: .6; }
+      50%      { transform: scale(1.3); opacity: .2; }
+    }
+    /* The arrow — points UP by default (north), rotated by JS */
+    .user-location-arrow {
+      width: 36px; height: 36px;
+      position: relative; flex-shrink: 0;
+      /* rotation applied inline by JS */
+      transition: transform .3s ease;
+    }
+    /* Dot-only mode when no compass available */
+    .user-location-dot {
+      width: 20px; height: 20px; border-radius: 50%;
+      background: #4285f4; border: 3px solid white;
+      box-shadow: 0 0 0 4px rgba(66,133,244,.25);
+      animation: loc-pulse-dot 2s ease-in-out infinite;
+    }
+    @keyframes loc-pulse-dot {
+      0%,100%{box-shadow:0 0 0 4px rgba(66,133,244,.25)}
+      50%    {box-shadow:0 0 0 8px rgba(66,133,244,.1)}
+    }
 
     /* ── POPUP ── */
     .leaflet-popup-content-wrapper { border-radius:16px; box-shadow:var(--sh-lg); padding:0; overflow:hidden; border:none; max-height:62vh; display:flex; flex-direction:column; }
@@ -979,6 +1007,8 @@ let activeCircles  = {};
 let locationMarker = null;
 let locationCircle = null;
 let watchId        = null;
+let compassHeading = null;  // degrees, null = unavailable
+let compassHandler = null;  // event listener ref for cleanup
 let currentWxDays  = 3;
 let fabMenuOpen    = false;
 let wxFabOpen      = false;
@@ -1395,6 +1425,9 @@ function initMap(sirens){
   sirens.forEach(addMarker);
   addLegend();
 
+  // Soft-refresh data whenever a popup is closed
+  map.on('popupclose', () => softRefresh());
+
   setTimeout(()=>{ if(map) map.invalidateSize(); },80);
   setTimeout(()=>{ if(map) map.invalidateSize(); },300);
 }
@@ -1584,6 +1617,7 @@ function openReportForm(sirenId){
 function closeReportForm(){
   document.getElementById('reportFormModal').classList.remove('open');
   document.getElementById('reportFormIframe').src = '';
+  softRefresh();
 }
 
 function shakeEl(el){
@@ -1623,6 +1657,41 @@ function closeLightbox(){
 /* =====================================================
    LOCATE ME
    ===================================================== */
+/* ── Helper: build the SVG arrow icon HTML ── */
+function locationIconHtml(heading){
+  // If no heading, show a simple dot
+  if(heading === null){
+    return `<div class="user-location-wrap"><div class="user-location-dot"></div></div>`;
+  }
+  // Arrow SVG pointing up, rotated to compass heading
+  return `<div class="user-location-wrap">
+    <div class="user-location-arrow" style="transform:rotate(${heading}deg);">
+      <svg width="36" height="36" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <!-- Shadow/glow -->
+        <circle cx="18" cy="18" r="12" fill="rgba(66,133,244,0.2)"/>
+        <!-- White border circle -->
+        <circle cx="18" cy="18" r="10" fill="white"/>
+        <!-- Blue fill circle -->
+        <circle cx="18" cy="18" r="8.5" fill="#4285f4"/>
+        <!-- Direction arrow (points up = north) -->
+        <polygon points="18,6 23,20 18,17 13,20" fill="white" opacity="0.95"/>
+      </svg>
+    </div>
+  </div>`;
+}
+
+function updateLocationMarkerIcon(){
+  if(!locationMarker) return;
+  const html = locationIconHtml(compassHeading);
+  const icon = L.divIcon({
+    className: '',
+    html,
+    iconSize:   [36, 36],
+    iconAnchor: [18, 18]
+  });
+  locationMarker.setIcon(icon);
+}
+
 function locateMe(){
   const btn = document.getElementById('fab-locate');
   if(location.protocol === 'file:'){
@@ -1630,42 +1699,111 @@ function locateMe(){
     return;
   }
   if(!navigator.geolocation){ alert('Geolocation is not supported by your browser.'); return; }
+
+  // Toggle off
   if(watchId !== null){
     navigator.geolocation.clearWatch(watchId);
     watchId = null;
-    if(locationMarker){ map.removeLayer(locationMarker); locationMarker=null; }
-    if(locationCircle){ map.removeLayer(locationCircle); locationCircle=null; }
+    if(locationMarker){ map.removeLayer(locationMarker); locationMarker = null; }
+    if(locationCircle){ map.removeLayer(locationCircle); locationCircle = null; }
+    // Remove compass listener
+    if(compassHandler){
+      window.removeEventListener('deviceorientationabsolute', compassHandler);
+      window.removeEventListener('deviceorientation', compassHandler);
+      compassHandler = null;
+    }
+    compassHeading = null;
     btn.classList.remove('locating','located');
-    btn.innerHTML='📍 Locate Me';
+    btn.innerHTML = '📍 Locate Me';
     return;
   }
+
   btn.classList.add('locating');
-  btn.innerHTML='⏳ Locating…';
+  btn.innerHTML = '⏳ Locating…';
+
+  // ── Start compass ──
+  // DeviceOrientationEvent.requestPermission() required on iOS 13+
+  function startCompass(){
+    compassHandler = (e) => {
+      let heading = null;
+
+      // deviceorientationabsolute gives true north directly
+      if(e.absolute && e.alpha !== null){
+        heading = (360 - e.alpha) % 360;
+      }
+      // iOS: webkitCompassHeading is already degrees from true north
+      else if(e.webkitCompassHeading !== undefined && e.webkitCompassHeading !== null){
+        heading = e.webkitCompassHeading;
+      }
+      // Fallback: non-absolute alpha (magnetic, not true north — close enough)
+      else if(e.alpha !== null){
+        heading = (360 - e.alpha) % 360;
+      }
+
+      if(heading !== null){
+        compassHeading = Math.round(heading);
+        updateLocationMarkerIcon();
+      }
+    };
+
+    // Prefer absolute (true north) event
+    window.addEventListener('deviceorientationabsolute', compassHandler, true);
+    // Also listen to standard event for broader support
+    window.addEventListener('deviceorientation', compassHandler, true);
+  }
+
+  // iOS 13+ requires permission for DeviceOrientation
+  if(typeof DeviceOrientationEvent !== 'undefined' &&
+     typeof DeviceOrientationEvent.requestPermission === 'function'){
+    DeviceOrientationEvent.requestPermission()
+      .then(state => { if(state === 'granted') startCompass(); })
+      .catch(() => {}); // silently skip if denied — dot mode still works
+  } else {
+    // Android and desktop — no permission prompt needed
+    startCompass();
+  }
+
+  // ── Start GPS ──
   watchId = navigator.geolocation.watchPosition(
-    pos=>{
-      const lat=pos.coords.latitude, lng=pos.coords.longitude, acc=pos.coords.accuracy;
+    pos => {
+      const lat = pos.coords.latitude;
+      const lng = pos.coords.longitude;
+      const acc = pos.coords.accuracy;
+
+      // If GPS gives us a heading (walking/driving speed) use it when no compass
+      if(pos.coords.heading !== null && !isNaN(pos.coords.heading) && compassHeading === null){
+        compassHeading = Math.round(pos.coords.heading);
+      }
+
       btn.classList.remove('locating');
       btn.classList.add('located');
-      btn.innerHTML='✓ Located';
-      const userIcon = L.divIcon({ className:'', html:'<div class="user-location-dot"></div>', iconSize:[20,20], iconAnchor:[10,10] });
+      btn.innerHTML = '✓ Located';
+
+      const html = locationIconHtml(compassHeading);
+      const icon = L.divIcon({ className:'', html, iconSize:[36,36], iconAnchor:[18,18] });
+
       if(!locationMarker){
-        locationMarker = L.marker([lat,lng],{icon:userIcon,zIndexOffset:1000}).addTo(map);
-        locationCircle = L.circle([lat,lng],{radius:acc,color:'#4285f4',fillColor:'#4285f4',fillOpacity:.08,weight:1,opacity:.5}).addTo(map);
-        map.setView([lat,lng],15);
+        locationMarker = L.marker([lat, lng], { icon, zIndexOffset:1000 }).addTo(map);
+        locationCircle = L.circle([lat, lng], {
+          radius: acc, color:'#4285f4', fillColor:'#4285f4',
+          fillOpacity:.08, weight:1, opacity:.5
+        }).addTo(map);
+        map.setView([lat, lng], 15);
       } else {
-        locationMarker.setLatLng([lat,lng]);
-        locationCircle.setLatLng([lat,lng]);
+        locationMarker.setLatLng([lat, lng]);
+        locationMarker.setIcon(icon);
+        locationCircle.setLatLng([lat, lng]);
         locationCircle.setRadius(acc);
       }
     },
-    err=>{
+    err => {
       btn.classList.remove('locating');
-      btn.innerHTML='📍 Locate Me';
-      watchId=null;
-      if(err.code===1) alert('📍 Location permission denied\n\nTo fix this:\n1. Click the lock/info icon in your browser address bar\n2. Set Location to "Allow"\n3. Reload the page and try again');
+      btn.innerHTML = '📍 Locate Me';
+      watchId = null;
+      if(err.code === 1) alert('📍 Location permission denied\n\nTo fix this:\n1. Click the lock/info icon in your browser address bar\n2. Set Location to "Allow"\n3. Reload the page and try again');
       else alert('Could not get your location. Please try again.');
     },
-    {enableHighAccuracy:true, timeout:15000, maximumAge:5000}
+    { enableHighAccuracy:true, timeout:15000, maximumAge:5000 }
   );
 }
 
@@ -1800,6 +1938,7 @@ function closeModal(){
   document.getElementById('formModal').classList.remove('open');
   document.getElementById('formIframe').src='';
   document.body.style.overflow='';
+  softRefresh();
 }
 window.addEventListener('click',e=>{ if(e.target===document.getElementById('formModal')) closeModal(); });
 
@@ -1818,6 +1957,7 @@ function closeSuggestionBox(){
   document.getElementById('suggestModal').classList.remove('open');
   document.getElementById('suggestIframe').src='';
   document.body.style.overflow='';
+  softRefresh();
 }
 window.addEventListener('click',e=>{ if(e.target===document.getElementById('suggestModal')) closeSuggestionBox(); });
 
@@ -1833,6 +1973,43 @@ function showError(msg){
   document.getElementById('error-screen').classList.add('visible');
 }
 function hideError(){ document.getElementById('error-screen').classList.remove('visible'); }
+
+/* =====================================================
+   SOFT REFRESH — re-fetches sheet data and redraws
+   markers without disturbing map view, zoom, or UI
+   ===================================================== */
+function softRefresh(){
+  fetch(apiUrl(SHEET_NAME))
+    .then(r=>{ if(!r.ok) return r.json().then(e=>{throw new Error(e.error?.message||('HTTP '+r.status));}); return r.json(); })
+    .then(d=>{
+      const rows = d.values || [];
+      if(rows.length < 2) return; // nothing to do
+      const sirens = rowsToSirens(rows);
+
+      // Store updated siren list for coverage mode
+      allSirens = sirens;
+
+      // Remove all existing markers from the map
+      Object.values(markerRegistry).forEach(({marker}) => {
+        if(map.hasLayer(marker)) map.removeLayer(marker);
+      });
+      markerRegistry = {};
+
+      // Clear any open range circles
+      Object.keys(activeCircles).forEach(id => clearCircle(id));
+
+      // Re-add all markers with fresh data
+      sirens.forEach(addMarker);
+
+      // Update lives protected counter
+      const lives = calcLivesProtected(sirens);
+      document.getElementById('lives-count').textContent = lives.toLocaleString();
+
+      // If coverage mode is active, redraw coverage circles with fresh data
+      if(coverageMode) showAllCoverageCircles();
+    })
+    .catch(err => console.warn('Soft refresh failed:', err));
+}
 
 /* =====================================================
    NEXT TEST COUNTDOWN
