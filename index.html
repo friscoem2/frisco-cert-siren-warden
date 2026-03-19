@@ -1493,6 +1493,8 @@ function clearCircle(id){
 /* =====================================================
    POPUP
    ===================================================== */
+function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
 function maskEmail(email){
   if(!email || email.length < 5) return '***';
   return email.slice(0, 4) + '***' + email[email.length - 1];
